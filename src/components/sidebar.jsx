@@ -2,13 +2,13 @@ import { useLocation } from "react-router-dom"
 
 export default function Sidebar(){
     let location = useLocation().pathname
-    if(location != "/" && location != "/profile"){
+    if(location == "/photos"){
         return(
-            <aside className="sticky left-0 top-16 w-1/5 overflow-y-auto  h-[25/100]  bg-gray-700 ">
+            <aside className="w-1/5 overflow-y-auto  h-[525px] bg-violet-800/30 rounded-br-4xl">
                 <li>
-                    <ul>1</ul>
-                    <ul>11</ul>
-                    <ul>111</ul>
+                    <ul>murzyn</ul>
+                    <ul>murzynmurzyn</ul>
+                    <ul>murzynmurzynmurzyn</ul>
                 </li>
             </aside>
         )

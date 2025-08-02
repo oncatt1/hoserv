@@ -2,7 +2,7 @@
 import Welcome from "../sites/welcome";
 import Profile from "../sites/profile";
 import Photos from "../sites/photos";
-import AddPhoto from "../sites/add_photo";
+import Login from "../sites/login";
 import { Route, Routes} from "react-router-dom";
 
 export default function App(){
@@ -11,7 +11,7 @@ export default function App(){
             <Route path="/" element={<Welcome/>} />
             <Route path="/profile" element={<Profile/>} />
             <Route path="/photos" element={<Photos/>} />
-            <Route path="/add_photo" element={<AddPhoto/>} />
+            <Route path="/login" element={<Login/>} />
         </Routes>
     )
 }

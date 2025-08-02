@@ -15,7 +15,7 @@ createRoot(document.getElementById('root')).render(
           <Header/>
           <div className='flex flex-1 flex-row'>
             <Sidebar/>
-            <main className='flex-1 w-3/5'>
+            <main className='flex-1 w-3/5 overflow-auto h-[533px]'>
               <App/>
             </main>
           </div>
