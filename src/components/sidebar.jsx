@@ -4,12 +4,8 @@ export default function Sidebar(){
     let location = useLocation().pathname
     if(location == "/photos"){
         return(
-            <aside className="w-1/5 overflow-y-auto  h-[525px] bg-violet-800/30 rounded-br-4xl">
-                <li>
-                    <ul>murzyn</ul>
-                    <ul>murzynmurzyn</ul>
-                    <ul>murzynmurzynmurzyn</ul>
-                </li>
+            <aside className="w-1/5 overflow-y-auto  h-[525px] bg-violet-800/30 rounded-br-4xl p-3">
+                elements
             </aside>
         )
     }

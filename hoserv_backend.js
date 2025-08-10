@@ -1,9 +1,52 @@
 const express = require('express');
-const cors = require('cors'); 
+const cors = require('cors');
+const multer = require('multer');
 const mysql = require('mysql2');
-const app = express();
+const fs = require('fs-extra');
+const path = require('path');
+const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken');
+const https = require("https");
 
-app.use(cors());
+const app = express();
+const PORT = 3000;
+const BASE_DIR = '/mnt/photos';
+const JWT_SECRET = 'M0z4n0_rc0o2h@i3t';
+const allowedOrigins = [
+  'http://localhost:5173/',
+  'http://localhost:5173',
+  'https://192.168.8.132:5173',
+  'https://192.168.8.175',
+  'https://192.168.8.175:5173'
+];
+
+const normalizedAllowed = allowedOrigins.map(o => o.replace(/\/+$/, '').toLowerCase());
+function originAllowed(origin) {
+  if (!origin) return false;
+  return normalizedAllowed.includes(origin.toLowerCase());
+}
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true); // pozwól w dev bez Origin
+    return originAllowed(origin) ? callback(null, true) : callback(null, false);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+};
+
+app.use(cors(corsOptions));
+
+app.use('/api', (req, res, next) => {
+  const origin = req.headers.origin;
+  if (!origin || originAllowed(origin)) return next();
+  return res.status(403).json({ error: 'CORS origin not allowed' });
+});
+
+app.use(express.json());
+app.use(cookieParser());
+
 const db = mysql.createConnection({
   host: 'localhost',
   user: 'admin',
@@ -11,26 +54,93 @@ const db = mysql.createConnection({
   database: 'hoserv'
 });
 
-// gets the photos
+// ======== Configs ========
+
+// Middleware: JWT checks
+function verifyToken(req, res, next) {
+  const token = req.cookies.token;
+  if (!token) return res.sendStatus(401);
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch {
+    return res.sendStatus(403);
+  }
+}
+
+// Multer config
+const storage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const { userId, folderName } = req.body;
+    const userFolderPath = path.join(BASE_DIR, userId, folderName);
+    await fs.ensureDir(userFolderPath);
+    cb(null, userFolderPath);
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+const upload = multer({ storage });
+
+// ======== APIs ========
+
+// GET: All photos
 app.get('/api/photos', (req, res) => {
   db.query('SELECT * FROM general', (err, results) => {
     if (err) return res.status(500).json({ error: err });
     res.json(results);
   });
 });
-//gets the folder list 
 
-//login system
+// POST: Login
 app.post('/api/login', (req, res) => {
-  let login = req.body.login
-  let password = req.body.password
-  let query = 'COUNT(*) from users WHERE login = ' + login + 'AND password = ' + password + ';'
-  db.query(query, (err, results) => {
-    if (err) return res.status(500).json({ error: err });
-    res.json(results);
-  })
-})
+  const { login, password } = req.body;
+  const query = `SELECT id, login FROM users WHERE login = ? AND password = ?`;
 
-app.listen(3000, '0.0.0.0', () => {
-  console.log('Server running on port 3000');
+  db.query(query, [login, password], (err, results) => {
+    if (err) return res.status(500).json({ error: err });
+
+    if (results.length > 0) {
+      const user = results[0];
+      const token = jwt.sign({ id: user.id, login: user.login }, JWT_SECRET, { expiresIn: '1h' });
+
+      res.cookie('token', token, {
+        httpOnly: true,
+        sameSite: 'none',
+        secure: true,
+        maxAge: 60 * 60 * 1000
+      });
+
+      res.status(200).json({ success: true });
+    } else {
+      res.status(401).json({ success: false, message: 'Nieprawidłowe dane logowania' });
+    }
+  });
+});
+
+// GET: About logged user
+app.get('/api/me', verifyToken, (req, res) => {
+  res.json({ user: req.user });
+});
+
+// POST: Log out
+app.post('/api/logout', (req, res) => {
+  res.clearCookie('token');
+  res.status(200).json({ success: true });
+});
+
+// POST: Upload photo
+app.post('/upload', upload.single('photo'), (req, res) => {
+  res.json({ message: 'Upload complete', file: req.file });
+});
+
+// Start server
+const options = {
+  key: fs.readFileSync('./192.168.8.175+3-key.pem'),
+  cert: fs.readFileSync('./192.168.8.175+3.pem')
+};
+https.createServer(options, app).listen(PORT, '0.0.0.0', () => {
+  console.log(`HTTPS Server running on port ${PORT}`);
 });
