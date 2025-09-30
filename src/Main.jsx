@@ -10,8 +10,8 @@ createRoot(document.getElementById('root')).render(
     <StrictMode>
       <Router>
         <div className="flex flex-col min-h-screen 2xl:text-2xl text-gray-300 font-mono
-        bg-gradient-to-tr from-gray-900  to-violet-900 via-fuchsia-950 via-20% 
-        text-shadow-lg">
+        bg-gradient-to-tr from-gray-900  to-violet-900 via-fuchsia-950 dark:to-zinc-800 dark:via-slate-950
+         via-20% text-shadow-lg">
           <Header/>
           <div className='flex flex-1 flex-row'>
             <Sidebar/>
