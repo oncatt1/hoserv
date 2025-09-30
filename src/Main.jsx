@@ -1,10 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import Header from './components/header'
-import App from './components/app'
-import Footer from './components/footer'
 import { BrowserRouter as Router } from 'react-router-dom'
-import Sidebar from './components/sidebar'
+import Header from './components/Header'
+import App from './components/App'
+import Footer from './components/Footer'
+import Sidebar from './components/Sidebar'
 
 createRoot(document.getElementById('root')).render(
     <StrictMode>

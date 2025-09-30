@@ -10,7 +10,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     https: { key, cert },
-    host: '0.0.0.0', // nasłuch na wszystkich interfejsach
+    host: '0.0.0.0',
     port: 5173,
   }
 })
