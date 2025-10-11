@@ -4,7 +4,7 @@ export default function Sidebar(){
     let location = useLocation().pathname
     if(location == "/photos"){
         return(
-            <aside className="w-1/5 overflow-y-auto  h-[525px] bg-violet-800/30 rounded-br-4xl p-3">
+            <aside className="w-1/5 overflow-y-auto  h-[525px] bg-violet-800/30 dark:bg-slate-800/40 rounded-br-4xl p-3">
                 elements
             </aside>
         )

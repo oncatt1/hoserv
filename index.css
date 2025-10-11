@@ -1,2 +1,28 @@
 @import "tailwindcss";
-        
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+@media (prefers-color-scheme: dark) {
+    .main-content-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: #52525b #18181b;
+    }
+}
+@media (prefers-color-scheme: light) {
+    .main-content-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: #8b5cf6 #4c1d95;
+    }
+}
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+  }
+  
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+  }
+}

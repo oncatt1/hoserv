@@ -1,10 +1,10 @@
 
-import Welcome from "../sites/welcome";
-import Profile from "../sites/profile";
-import Photos from "../sites/photos";
-import Login from "../sites/login";
+import Welcome from "../pages/welcome";
+import Profile from "../pages/profile";
+import Photos from "../pages/photos";
+import Login from "../pages/login";
 import { Route, Routes} from "react-router-dom";
-import Admin from "../sites/admin";
+import Admin from "../pages/admin/admin";
 
 export default function App(){
     return(
