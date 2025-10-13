@@ -5,9 +5,9 @@ import { useUserStore } from '../utils/auth';
 export default function Header(){
     const {user , fetchUser} = useUserStore();
     useEffect(() => {
-        console.log("changed user");
+        if(!user) return;
         fetchUser();
-    }, [fetchUser]);
+    }, [user]);
     return(
         <header className="h-[60px] 2xl:h-[80px] top-0 px-10 flex items-center justify-between 
         bg-gradient-to-bl from-gray-600 dark:from-gray-900 via-purple-900 dark:via-zinc-800 

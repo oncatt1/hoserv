@@ -32,16 +32,8 @@ export default function Profile(){
                 <span className="text-xl border-b-2 border-violet-600/20 dark:border-zinc-600/20">Informacje</span>
                 <div className="">
                     <div className="indent-3">Dostęp do: [nazwy tablic]</div><br />
-                    <div className="indent-3">Ilość dostępnych zdjęć: </div><br />
-                    <div className="indent-3">Wykorzystanie dysków: </div>
-                </div>
-            </div>
-            <div className="bg-purple-800/20 dark:bg-gray-800/20 p-6 rounded-b-2xl  ">
-                <span className="text-xl border-b-2 border-violet-600/20 dark:border-zinc-600/20">Ustawienia</span>
-                <div className="">
-                    <div className="indent-3">Zmień język:</div><br />
-                    <div className="indent-3">Sendfeetback: </div><br />
-                    <div className="indent-3">Usuń zdjęcia:</div>
+                    <div className="indent-3">Ilość dostępnych zdjęć: [ilość]</div><br />
+                    <div className="indent-3">Wykorzystanie dysków: [usage]</div>
                 </div>
             </div>
         </div>
