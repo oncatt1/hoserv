@@ -46,11 +46,18 @@ app.use('/api', (req, res, next) => {
 app.use(express.json());
 app.use(cookieParser());
 
+// const db = mysql.createConnection({
+//   host: 'localhost',
+//   user: 'admin',
+//   password: 'Wojtek2008',
+//   database: 'hoserv'
+// });
+
 const db = mysql.createConnection({
   host: 'localhost',
-  user: 'admin',
-  password: 'Wojtek2008',
-  database: 'hoserv'
+  user: 'root',
+  password: '',
+  database: 'dupa'
 });
 
 // const db = mysql.createConnection({
