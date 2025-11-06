@@ -60,6 +60,13 @@ const db = mysql.createConnection({
   database: 'dupa'
 });
 
+// const db = mysql.createConnection({
+//   host: 'localhost',
+//   user: 'root',
+//   password: '',
+//   database: 'dupa'
+// });
+
 // ======== Configs ========
 
 // Middleware: JWT checks

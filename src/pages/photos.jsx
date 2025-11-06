@@ -4,6 +4,7 @@ import PhotosSelectView from "../components/photos/photosSelectView";
 import PhotosSelectSort from "../components/photos/photosSelectSort";
 import { MdAddAPhoto } from "react-icons/md";
 import { Link } from "react-router-dom";
+import { PhotoShow } from "../components/photos/photo_show";
 
 export default function Photos(){
     const [photos, setPhotos] = useState([]);
@@ -50,22 +51,14 @@ export default function Photos(){
             <div>
                 
                 {photos.map(photo => (
-                    <div key={photo.id}>
-                        <img src={photo.filename} alt={photo.photoname} />
-                        <div>       
-                            {photo.photoname}
-                        </div>
-                    </div>
+                    PhotoShow({
+                        key: photo.id,
+                        src: photo.filename,
+                        onclick: () => {},
+                        className: "",
+                        label: photo.photoname
+                    })
                 ))}
-                {/* <img src="hoserv_photos\wioso.webp" alt="" />
-                <img src="hoserv_photos\wioso.webp" alt="" />
-                <img src="hoserv_photos\wioso.webp" alt="" />
-                <img src="hoserv_photos\wioso.webp" alt="" />
-                <img src="hoserv_photos\wioso.webp" alt="" />
-                <img src="hoserv_photos\wioso.webp" alt="" />
-                <img src="hoserv_photos\wioso.webp" alt="" />
-                <img src="hoserv_photos\wioso.webp" alt="" />
-                <img src="hoserv_photos\wioso.webp" alt="" /> */}
             </div>
         </div>
     )
