@@ -15,7 +15,7 @@ const JWT_SECRET = 'M0z4n0_rc0o2h@i3t';
 const allowedOrigins = [
   'http://192.168.1.21:5173',
   'http://192.168.1.10',
-  
+  'http://localhost:5173',
   'http://192.168.1.10:5173'
 ];
 
@@ -46,11 +46,18 @@ app.use('/api', (req, res, next) => {
 app.use(express.json());
 app.use(cookieParser());
 
+// const db = mysql.createConnection({
+//   host: 'localhost',
+//   user: 'admin',
+//   password: 'Wojtek2008',
+//   database: 'hoserv'
+// });
+
 const db = mysql.createConnection({
   host: 'localhost',
-  user: 'admin',
-  password: 'Wojtek2008',
-  database: 'hoserv'
+  user: 'root',
+  password: '',
+  database: 'dupa'
 });
 
 // ======== Configs ========
@@ -105,6 +112,7 @@ app.post('/api/login', (req, res) => {
         httpOnly: true,
         sameSite: 'lax',
         secure: false,
+        path: '/',
         maxAge: 60 * 60 * 1000 // 1000minutes
       });
 
@@ -116,6 +124,16 @@ app.post('/api/login', (req, res) => {
 });
 
 // ======== USER DEPENDENT APIs ========
+
+// GET: Return if logged in
+app.get('/api/isLogged', (req, res) => {
+  if (!req.cookies.token) {
+    res.status(200).json({isLogged: false})
+  }
+  else{
+    res.status(200).json({isLogged: true})
+  }
+})
 
 // GET: About logged user
 app.get('/api/me', verifyToken, (req, res) => {

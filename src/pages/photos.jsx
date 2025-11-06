@@ -3,6 +3,7 @@ import Input from "../components/photos/input";
 import PhotosSelectView from "../components/photos/photosSelectView";
 import PhotosSelectSort from "../components/photos/photosSelectSort";
 import { MdAddAPhoto } from "react-icons/md";
+import { Link } from "react-router-dom";
 
 export default function Photos(){
     const [photos, setPhotos] = useState([]);
@@ -43,7 +44,7 @@ export default function Photos(){
                     <PhotosSelectView/>
                 </div>
                 <div className="m-2 p-1">
-                    <MdAddAPhoto className="size-8"/>
+                    <Link to="/add"><MdAddAPhoto className="size-8"/></Link>
                 </div>
             </div>
             <div>

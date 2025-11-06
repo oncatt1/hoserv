@@ -3,7 +3,7 @@ import Unauthorized from "../unauthorized";
 
 export default function Admin(){
     const {user , fetchUser} = useUserStore();
-    if(user != `${import.meta.env.ADMIN_NAME}`) return(<Unauthorized/>) //fix
+    if(user != `${import.meta.env.VITE_ADMIN_NAME}`) return(<Unauthorized/>)
     return(
         <div className="p-8">
             <div className="p-2 m-3 flex w-2/3 border-b-2 border-violet-700/20 dark:border-zinc-700/20 mb-10">
