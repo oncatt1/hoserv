@@ -1,4 +1,4 @@
-export const AuthCard = ({ children }) => {
+export const Card = ({ children }) => {
     return (
         <div className="flex flex-col justify-center items-center p-20">
             <div className="justify-center items-center flex-col flex m-8 p-15 w-100 
