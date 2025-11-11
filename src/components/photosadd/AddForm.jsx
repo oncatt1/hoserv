@@ -1,54 +1,65 @@
 import { useState } from "react";
 import { FormInput } from "../common/FormInput";
 
-export const AddForm = ({onSubmit, loading, error}) => {
-    const [ data, setData] = useState(null); //change
+export const AddForm = ({onSubmit, loading, error, onError}) => {
+    const [ data, setData] = useState({});
     const [ img, setImg] = useState(null);
     const handleSubmit = (e) => {
         e.preventDefault();
-        onSubmit();
+        console.log(data);
+        onSubmit(data);
     }
     
     const handleChange = (e) => {
-        setData({
-            ...data,
-            [e.target.name]: e.target.value
-        });
+        const { name, value } = e.target;
+        setData(prev => ({
+            ...prev,
+            [name]: value
+        }));
     }
-    const handlePhotoChange = (e) => {
-        const file = e.target.files[0]; //zmienic pozniej na wiecej niz jedno
-        if (!file) return;
 
-        handleChange(e);
+    const handlePhotoChange = (e) => {
+        const file = e.target.files && e.target.files[0]; // change later for multiple
+        if (!file) return;
+        if (!file.type.startsWith("image/")) {
+            if (typeof onError === "function") onError("Wybrany plik nie jest obrazem.");
+            return;
+        }
+        if (typeof onError === "function") onError(null);
+        setData(prev => ({ ...prev, ["name"]: file.name}));
+        setData(prev => ({ ...prev, ["lastModified"]: file.lastModifiedDate}))
+        setData(prev => ({ ...prev, ["size"]: file.size})) // in bytes
         setImg(URL.createObjectURL(file));
     }
     return(
-        //sam plik, kto ma dostep (domyslnie uzytkownik), podglad (nie jezeli duzo), dokąd, 
         <form onSubmit={handleSubmit} method="post"  className="justify-center items-center flex-col flex">
             <FormInput
                 label="Plik"
                 type="file"
                 name="file"
-                value={data}
+                value={data?.file}
                 loading={loading}
                 onChange={handlePhotoChange}
+                className="mb-2"
             />
             <FormInput
                 type="text"
                 label="Dostęp"
                 name="access"
-                value={data}
+                value={data?.access}
                 loading={loading}
                 onChange={handleChange}
+                className="p-2 mb-2 bg-slate-800 "
             />
             <FormInput
                 label="Folder"
                 name="folder"
-                value={data}
+                value={data?.folder}
                 loading={loading}
                 onChange={handleChange}
+                className="mb-2 p-2 bg-slate-800 "
             />
-            <img src={img}>
+            <img src={img} className="mt-10 shadow-lg max-h-52">
             </img>
             <button type="submit" 
                 disabled={loading}

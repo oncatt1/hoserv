@@ -46,18 +46,11 @@ app.use('/api', (req, res, next) => {
 app.use(express.json());
 app.use(cookieParser());
 
-// const db = mysql.createConnection({
-//   host: 'localhost',
-//   user: 'admin',
-//   password: 'Wojtek2008',
-//   database: 'hoserv'
-// });
-
 const db = mysql.createConnection({
   host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'dupa'
+  user: 'admin',
+  password: 'Wojtek2008',
+  database: 'hoserv'
 });
 
 // const db = mysql.createConnection({
@@ -66,6 +59,7 @@ const db = mysql.createConnection({
 //   password: '',
 //   database: 'dupa'
 // });
+
 
 // ======== Configs ========
 
@@ -162,7 +156,7 @@ app.post('/api/logout', verifyToken,(req, res) => {
 });
 
 // POST: Upload photo
-app.post('/upload', verifyToken, upload.single('photo'), (req, res) => {
+app.post('/addPhoto', verifyToken, upload.single('photo'), (req, res) => {
   res.json({ message: 'Upload complete', file: req.file });
 });
 

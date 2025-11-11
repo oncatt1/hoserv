@@ -23,16 +23,17 @@ export const LoginForm = ({ onSubmit, loading, error}) => {
         <form onSubmit={handleSubmit} method="post" className="justify-center items-center flex-col flex">
             <FormInput  
                 label="Login"
+                type="text"
                 name="login"
                 value={credentials.login}
-                onchange={handleChange}
+                onChange={handleChange}
             />
             <FormInput
                 label="Hasło"
                 type="password"
                 name="password"
                 value={credentials.password}
-                onchange={handleChange}
+                onChange={handleChange}
             />
             <button type="submit" 
                 disabled={loading}
