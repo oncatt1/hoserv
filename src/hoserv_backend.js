@@ -10,13 +10,16 @@ import jwt from 'jsonwebtoken';
 
 const app = express();
 const PORT = 3000;
-const BASE_DIR = '/mnt/photos';
+const DISK_SIZE = 900000000;
+//const BASE_DIR = '/mnt/photos';
+const BASE_DIR = '/home/oncatt1/Desktop/photos/';
 const JWT_SECRET = 'M0z4n0_rc0o2h@i3t';
 const allowedOrigins = [
   'http://192.168.1.21:5173',
   'http://192.168.1.10',
   'http://localhost:5173',
-  'http://192.168.1.10:5173'
+  'http://192.168.1.10:5173',
+  'http://192.168.1.10:5174'
 ];
 
 const normalizedAllowed = allowedOrigins.map(o => o.replace(/\/+$/, '').toLowerCase());
@@ -36,7 +39,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
+app.use('/photos', cors(corsOptions), express.static(BASE_DIR));
 app.use('/api', (req, res, next) => {
   const origin = req.headers.origin;
   if (!origin || originAllowed(origin)) return next();
@@ -83,8 +86,11 @@ function verifyToken(req, res, next) {
 // Multer config
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
-    const { userId, folderName } = req.body;
+    const userId = req.query.user;
+    const folderName = req.query.folder;
+
     const userFolderPath = path.join(BASE_DIR, userId, folderName);
+    console.log("Creating folder path: " + userFolderPath);
     await fs.ensureDir(userFolderPath);
     cb(null, userFolderPath);
   },
@@ -138,12 +144,12 @@ app.get('/api/isLogged', (req, res) => {
 
 // GET: About logged user
 app.get('/api/me', verifyToken, (req, res) => {
-  res.json({ user: req.user });
+  res.json({ user: req.user});
 });
 
 // GET: All photos
 app.get('/api/photos', verifyToken, (req, res) => {
-  db.query('SELECT * FROM general', (err, results) => {
+  db.query('SELECT * FROM photos_general', (err, results) => {
     if (err) return res.status(500).json({ error: err });
     res.json(results);
   });
@@ -156,8 +162,133 @@ app.post('/api/logout', verifyToken,(req, res) => {
 });
 
 // POST: Upload photo
-app.post('/addPhoto', verifyToken, upload.single('photo'), (req, res) => {
-  res.json({ message: 'Upload complete', file: req.file });
+app.post('/api/addPhoto', verifyToken, upload.single('file'), (req, res) => {
+  try {
+    const folder = req.body.folder;
+    const userId = req.body.access;
+    console.log(req);
+    const file = req.file;
+    const name = file ? file.filename : (req.body.name || '');
+    const size = file ? file.size : (req.body.size || 0);
+
+    const dateObj = req.body.lastModified ? new Date(req.body.lastModified) : new Date();
+    const dateStr = dateObj.toISOString().slice(0, 19).replace('T', ' ');
+
+    const query = "INSERT INTO `photos_general` (`name`, `date`, `user_id`, `folder`, `size`) VALUES ( ? , ? , ? , ? , ? )";
+    db.query(query, [name, dateStr, userId, folder, size], (err, results) => {
+      if (err) {
+        console.log("Nie udane dodanie", err.sqlMessage);
+        return res.status(500).json({ error: err.sqlMessage });
+      }
+      console.log("Udane dodanie");
+      res.status(200).json({ success: true });
+    });
+  } catch (err) {
+    console.log('Upload error', err);
+    res.status(500).json({ error: 'Upload failed' });
+  }
+});
+
+app.get('/api/getUsage', verifyToken, (req, res) => {
+  const userLogin = req.user.login; // FIXED
+
+  // 1. Get user's main DB ID
+  db.query(
+    'SELECT db_main FROM users WHERE login = ?',
+    [userLogin],
+    (err, userRows) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Server error' });
+      }
+
+      if (userRows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const userDbId = userRows[0].db_main;
+
+      // 2. Get table name
+      db.query(
+        'SELECT name FROM db_photos WHERE id = ?',
+        [userDbId],
+        (err, dbRows) => {
+          if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'Server error' });
+          }
+
+          if (dbRows.length === 0) {
+            return res.status(404).json({ error: 'PhotoDB not found' });
+          }
+
+          const tableName = dbRows[0].name;
+
+          // 3. Get the user’s usage
+          const userQuery = `SELECT SUM(size) AS totalSize FROM \`${tableName}\``;
+
+          db.query(userQuery, (err, sizeRows) => {
+            if (err) {
+              console.error(err);
+              return res.status(500).json({ error: 'Server error' });
+            }
+
+            const userUsage = Number(sizeRows[0].totalSize) || 0;
+
+            // 4. Get list of all photo tables
+            db.query("SELECT name FROM db_photos", (err, allTableRows) => {
+              if (err) {
+                console.error(err);
+                return res.status(500).json({ error: 'Server error' });
+              }
+
+              let remaining = allTableRows.length;
+              let totalUsage = 0;
+
+              if (remaining === 0) {
+                var totalUsagePercent = Number(((totalUsage / DISK_SIZE) * 100).toFixed(4));
+                var userUsagePercent = Number(((userUsage / DISK_SIZE) * 100).toFixed(4));
+                return res.json({
+                  success: true,
+                  userUsage,
+                  totalUsage,
+                  totalUsagePercent,
+                  userUsagePercent
+                });
+              }
+
+              // 5. Loop through each table and sum usage
+              allTableRows.forEach(row => {
+                const table = row.name;
+                const q = `SELECT SUM(size) AS totalSize FROM \`${table}\``;
+
+                db.query(q, (err, resultRows) => {
+                  if (!err && resultRows.length > 0) {
+                    totalUsage += Number(resultRows[0].totalSize) || 0;
+                  }
+
+                  remaining--;
+
+                  // When all queries complete → send result
+                  if (remaining === 0) {
+                    var totalUsagePercent = Number(((totalUsage / DISK_SIZE) * 100).toFixed(4));
+                    var userUsagePercent = Number(((userUsage / DISK_SIZE) * 100).toFixed(4));
+                    res.json({
+                      success: true,
+                      userUsage,
+                      totalUsage,
+                      totalUsagePercent,
+                      userUsagePercent
+                    });
+                  }
+                });
+              });
+            });
+          });
+        }
+      );
+    }
+  );
 });
 
 // Start server

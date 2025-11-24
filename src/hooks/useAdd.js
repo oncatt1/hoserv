@@ -10,20 +10,22 @@ export const useAdd = () => {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/addPhoto`, {
+            const folder = data.get('folder');
+            const access = data.get('access');
+            console.log(data);
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/addPhoto?folder=${folder}&user=${access}`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: {},
                 credentials: 'include',
-                body: JSON.stringify(data)
+                body: data
             });
             if (res.ok){
                 navigate("/photos");
                 return { success: true }
             } else {
                 const err = await res.json();
-                setError(err.message || "Addition failed");
+                console.log(err);
+                setError(JSON.stringify(err) || "Addition failed");
                 return { success: false, error: err };
             }
         } catch (err) {

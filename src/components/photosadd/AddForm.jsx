@@ -4,10 +4,20 @@ import { FormInput } from "../common/FormInput";
 export const AddForm = ({onSubmit, loading, error, onError}) => {
     const [ data, setData] = useState({});
     const [ img, setImg] = useState(null);
+    
     const handleSubmit = (e) => {
         e.preventDefault();
-        console.log(data);
-        onSubmit(data);
+        const formData = new FormData();
+
+        Object.entries(data || {}).forEach(([key, value]) => {
+            if (value instanceof File || value instanceof Blob) {
+                formData.append(key, value, value.name);
+            } else if (value !== undefined && value !== null) {
+                formData.append(key, value);
+            }
+        });
+        console.log(formData);
+        onSubmit(formData);
     }
     
     const handleChange = (e) => {
@@ -26,6 +36,7 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
             return;
         }
         if (typeof onError === "function") onError(null);
+        setData(prev => ({ ...prev, ["file"]: file}));
         setData(prev => ({ ...prev, ["name"]: file.name}));
         setData(prev => ({ ...prev, ["lastModified"]: file.lastModifiedDate}))
         setData(prev => ({ ...prev, ["size"]: file.size})) // in bytes

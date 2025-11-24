@@ -20,8 +20,8 @@ export default function Photos(){
                 console.error('Failed to fetch photos:', res.status);
                 return;
             }
-
             const data = await res.json();
+            console.log(data);
             setPhotos(data);
             } catch (err) {
             console.error('Error fetching photos:', err);
@@ -49,16 +49,19 @@ export default function Photos(){
                 </div>
             </div>
             <div>
-                
-                {photos.map(photo => (
-                    PhotoShow({
-                        key: photo.id,
-                        src: photo.filename,
-                        onclick: () => {},
-                        className: "",
-                        label: photo.photoname
-                    })
-                ))}
+                {photos.map(photo => {
+                    const src = `http://192.168.1.10:3000/photos/${photo.user_id}/${photo.folder}/${photo.name}`;
+
+                    return (
+                        <PhotoShow
+                        key={photo.id}
+                        src={src}
+                        alt="dupa"
+                        className="w-52"
+                        label={photo.name}
+                        />
+                    );
+                })}
             </div>
         </div>
     )
