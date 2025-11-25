@@ -1,14 +1,28 @@
 import { useEffect, useState } from "react";
-import Input from "../components/photos/input";
-import PhotosSelectView from "../components/photos/photosSelectView";
-import PhotosSelectSort from "../components/photos/photosSelectSort";
+import { Input }from "../components/photos/input";
 import { MdAddAPhoto } from "react-icons/md";
 import { Link } from "react-router-dom";
 import { PhotoShow } from "../components/photos/photo_show";
 
 export default function Photos(){
     const [photos, setPhotos] = useState([]);
+    const [inputValue, setInputValue] = useState('');
+    const [type, setType] = useState('0');
+    const [order, setOrder] = useState('0');
+    const [size, setSize] = useState('0');
 
+    const handleInputChange = (e) => {
+        setInputValue(e.target.value);
+    };
+    const handleSortChange = (e) => {
+        setType(e.target.value);
+    };
+    const handleOrderChange = (e) => {
+        setOrder(e.target.value);
+    };
+    const handleSizeChange = (e) => {
+        setSize(e.target.value);
+    };
     useEffect(() => {
         const fetchPhotos = async () => {
             try {
@@ -34,15 +48,43 @@ export default function Photos(){
 
     return(
         <div className="m-2">
-            <div className="h-10 p-3 rounded-lg m-2 justify-between items-center flex bg-fuchsia-900/30 dark:bg-slate-800/40">
-                <div className="m-2 p-1 flex-3/3">
-                    <Input/>
+            <div className="h-10 p-6 rounded-lg m-2 justify-between items-center flex bg-fuchsia-900/30 dark:bg-slate-700/60">
+                <div className="m-2 p-1 flex-5/6">
+                    <Input type="text" name="search" placeholder="Wyszukaj zdjęcia" onChange={handleInputChange} value={inputValue} className="w-170" />
                 </div>
-                <div className="m-2 p-1 flex-1/3">
-                    <PhotosSelectSort/>
+                <div className="m-2 p-1 flex-1/6"> {/* type select */}
+                    <select name="type" className=" text-white rounded-lg px-2 p-1.5 focus:outline-1
+                        hover:bg-purple-800/80 bg-purple-900/80 focus:bg-purple-800/80 focus:outline-gray-700/80 
+                        dark:bg-gray-900/80 dark:hover:bg-gray-800/80 dark:focus:bg-gray-800/80 dark:focus:outline-zinc-700/80"
+                        value={type}
+                        onChange={handleSortChange}>
+                            <option value="0">Tytuł</option>
+                            <option value="1">Rozmiar</option>
+                            <option value="2">Data utworzenia</option>
+                            <option value="3">Data dodania</option>
+                            <option value="4">Typ</option>
+                    </select>
                 </div>
-                <div className="m-2 p-1 flex-1/3">
-                    <PhotosSelectView/>
+                <div className="m-2 p-1 flex-1/6"> {/* order select */}
+                    <select name="order" className=" text-white rounded-lg px-2 p-1.5 focus:outline-1
+                        hover:bg-purple-800/80 bg-purple-900/80 focus:bg-purple-800/80 focus:outline-gray-700/80 
+                        dark:bg-gray-900/80 dark:hover:bg-gray-800/80 dark:focus:bg-gray-800/80 dark:focus:outline-zinc-700/80"   
+                        value={order}
+                        onChange={handleOrderChange}>
+                            <option value="0">Malejąco</option>
+                            <option value="1">Rosnąco</option>
+                    </select>
+                </div>
+                <div className="m-2 p-1 flex-1/6"> {/* view size select*/}
+                    <select name="view" className="text-white rounded-lg px-2 p-1.5 focus:outline-1
+                        hover:bg-purple-800/80 bg-purple-900/80 focus:bg-purple-800/80 focus:outline-gray-700/80 
+                        dark:bg-gray-900/80 dark:hover:bg-gray-800/80 dark:focus:bg-gray-800/80 dark:focus:outline-zinc-700/80"
+                        value={size}
+                        onChange={handleSizeChange}>
+                            <option value="0">Średnie ikony</option>
+                            <option value="1">Duże ikony</option>
+                            <option value="2">Szczegóły</option>
+                    </select>
                 </div>
                 <div className="m-2 p-1">
                     <Link to="/add"><MdAddAPhoto className="size-8"/></Link>
