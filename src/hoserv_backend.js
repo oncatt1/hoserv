@@ -253,7 +253,8 @@ app.get('/api/getUsage', verifyToken, (req, res) => {
                   userUsage,
                   totalUsage,
                   totalUsagePercent,
-                  userUsagePercent
+                  userUsagePercent,
+                  DISK_SIZE
                 });
               }
 
@@ -278,7 +279,8 @@ app.get('/api/getUsage', verifyToken, (req, res) => {
                       userUsage,
                       totalUsage,
                       totalUsagePercent,
-                      userUsagePercent
+                      userUsagePercent,
+                      DISK_SIZE
                     });
                   }
                 });
@@ -290,7 +292,107 @@ app.get('/api/getUsage', verifyToken, (req, res) => {
     }
   );
 });
+app.get('/api/getDBs', verifyToken, (req, res) => {
+  const userLogin = req.user.login; // FIXED
 
+  // 1. Get user's main DB ID
+  db.query(
+    'SELECT db_main FROM users WHERE login = ?',
+    [userLogin],
+    (err, userRows) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Server error' });
+      }
+
+      if (userRows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const userDbId = userRows[0].db_main;
+
+      // 2. Get table name
+      db.query(
+        'SELECT name FROM db_photos WHERE id = ?',
+        [userDbId],
+        (err, dbRows) => {
+          if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'Server error' });
+          }
+
+          if (dbRows.length === 0) {
+            return res.status(404).json({ error: 'PhotoDB not found' });
+          }
+
+          const tableName = dbRows[0].name;
+          res.json({
+            success: true,
+            tableName
+          });
+        }
+      );
+    }
+  );
+});
+app.get('/api/getPhotoCount', verifyToken, (req, res) => {
+  const userLogin = req.user.login; 
+  db.query(
+    'SELECT db_main FROM users WHERE login = ?',
+    [userLogin],
+    (err, userRows) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Server error' });
+      }
+
+      if (userRows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const userDbId = userRows[0].db_main;
+      console.log(userDbId);
+      db.query(
+        'SELECT COUNT(*) as count FROM db_photos WHERE id = ?',
+        [userDbId],
+        (err, dbRows) => {
+          if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'Server error' });
+          }
+
+          if (dbRows.length === 0) {
+            return res.status(404).json({ error: 'PhotoDB not found' });
+          }
+          
+              
+          const userDbPhotoCount = dbRows[0].count;
+          db.query(
+            'SELECT COUNT(*) as count FROM db_photos WHERE id = 1',
+            [userDbId],
+            (err, dbRows) => {
+              if (err) {
+                console.error(err);
+                return res.status(500).json({ error: 'Server error' });
+              }
+
+              if (dbRows.length === 0) {
+                return res.status(404).json({ error: 'PhotoDB not found' });
+              }
+
+              const generalDbPhotoCount = dbRows[0].count;
+              res.json({
+                success: true,
+                userDbPhotoCount,
+                generalDbPhotoCount
+              });
+            }
+          );
+        }
+      );
+    }
+  )
+});
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`HTTP Server running on port ${PORT}`);

@@ -1,12 +1,15 @@
 import { useLocation } from "react-router-dom"
 import { useFetch } from "../hooks/useFetchGet"
 import { ErrorPopout } from "./common/ErrorPopout";
+import { useUserStore } from "../utils/auth";
 
 function Footer(){
     let location = useLocation().pathname
-    
-    const usageUrl = `${import.meta.env.VITE_API_URL}/getUsage`;
-    const { data, error } = useFetch(usageUrl);
+    const {user , fetchUser} = useUserStore();
+    let usageUrl = user ? `${import.meta.env.VITE_API_URL}/getUsage` : null;
+
+    const { data, error } = useFetch(usageUrl, { enabled: !!usageUrl });
+
     
     if (location === "/" || location === "/login") return null;
     const setFooterDashes = (UsagePercent) => {

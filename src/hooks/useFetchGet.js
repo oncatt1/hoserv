@@ -4,7 +4,8 @@ export const useFetch = (url) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [data, setData] = useState(null);
-    useEffect(() => {
+    useEffect(() => {  
+        if(!url) return;
         const fetchData = async () => {
             setLoading(true);
             setError(null);
@@ -17,8 +18,8 @@ export const useFetch = (url) => {
                 const data = await res.json();
                 setData(data);
             } catch (err) {
-                console.log("FETCH ERROR:", err);
                 setError(err.message);
+                throw new Error(`FETCH ERROR: ${url}`, err);
             } finally {
                 setLoading(false);
             }
