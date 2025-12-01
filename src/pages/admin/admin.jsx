@@ -1,16 +1,21 @@
+import { data } from "react-router-dom";
 import Loading from "../../components/loading";
 import { useFetch } from "../../hooks/useFetchGet";
 import { useUserStore } from "../../utils/auth";
 import Unauthorized from "../unauthorized";
 
 export default function Admin(){
-    const { user } = useUserStore();
     const usageUrl = `${import.meta.env.VITE_API_URL}/getUsage`;
-    
-    const { data } = useFetch(usageUrl);
-    
+    const photoCountUrl = `${import.meta.env.VITE_API_URL}/getPhotoCount`;
+
+    const { data: dataUsage,  error: errorDataUsage} = useFetch(usageUrl);
+    const { data: dataPhotoCount, error: errorDataPhotoCount } = useFetch(photoCountUrl);
+    const { user } = useUserStore();
+
     if (user !== import.meta.env.VITE_ADMIN_NAME) return <Unauthorized/>;
-    if (!user || !data) return <Loading/>;       
+    if(errorDataPhotoCount || errorDataUsage) return <ErrorPopout error={errorDataPhotoCount || errorDataUsage} />;
+    if (!user || !dataUsage || !dataPhotoCount) return <Loading/>;     
+
     return(
         <div className="p-8 opacity-0 animate-fadeIn">
             <div className="p-2 m-3 flex w-2/3 border-b-2 border-violet-700/20 dark:border-zinc-700/20 mb-10">
@@ -21,10 +26,10 @@ export default function Admin(){
             <div className="bg-purple-800/20 dark:bg-gray-800/20 p-6 rounded-t-2xl">
                 <span className="text-xl border-b-2 border-violet-600/20 dark:border-zinc-600/20">Informacje</span>
                 <div>
-                    <div className="indent-3">Wykorzystanie dysków: {data.totalUsage} bajtów z {data.DISK_SIZE} bajtów ({data.totalUsagePercent}%)</div>
+                    <div className="indent-3">Wykorzystanie dysków: {dataUsage.totalUsage} bajtów z {dataUsage.DISK_SIZE} bajtów ({dataUsage.totalUsagePercent}%)</div>
                 </div>
                 <div>
-                    <div className="indent-3">Ilość wszystkich zdjęć: [ddoed]</div>
+                    <div className="indent-3">Ilość wszystkich zdjęć: {dataPhotoCount.totalUsage}</div>
                 </div>
             </div>
             <div className="bg-purple-800/20 dark:bg-gray-800/20 p-6">

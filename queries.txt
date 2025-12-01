@@ -1,5 +1,0 @@
-CREATE TABLE `hoserv`.`general` (`id` INT NOT NULL PRIMARY KEY AUTO_INCREMENT , 
-                                 `filename` VARCHAR(255) NOT NULL , 
-                                 `photoname` VARCHAR(255S) NOT NULL , 
-                                 `date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                 `user_id` INT );

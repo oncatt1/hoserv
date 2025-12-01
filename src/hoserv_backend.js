@@ -100,16 +100,14 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// ======== NOT USER DEPENDENT APIs ========
+// ======== API Endpoints ========
 
 // POST: Login
-app.post('/api/login', (req, res) => {
-  console.log("Starting login");
-  const { login, password } = req.body;
-  const query = `SELECT id, login FROM users WHERE login = ? AND password = ?`;
-
-  db.query(query, [login, password], (err, results) => {
-    if (err) return res.status(500).json({ error: err });
+app.post('/api/login', async (req, res) => {
+  try {
+    const { login, password } = req.body;
+    const query = `SELECT id, login FROM users WHERE login = ? AND password = ?`;
+    const [[results]] = await db.promise().query(query, [login, password]);
 
     if (results.length > 0) {
       const user = results[0];
@@ -124,22 +122,18 @@ app.post('/api/login', (req, res) => {
       });
 
       res.status(200).json({ success: true });
-    } else {
-      res.status(401).json({ success: false, message: 'Nieprawidłowe dane logowania' });
-    }
-  });
-});
+    } else res.status(401).json({ success: false, message: 'Nieprawidłowe dane logowania' });
 
-// ======== USER DEPENDENT APIs ========
+  }catch (err) {
+      res.status(500).json({ error: `Server error ${err}`});
+  }
+
+});
 
 // GET: Return if logged in
 app.get('/api/isLogged', (req, res) => {
-  if (!req.cookies.token) {
-    res.status(200).json({isLogged: false})
-  }
-  else{
-    res.status(200).json({isLogged: true})
-  }
+  if (!req.cookies.token) res.status(200).json({isLogged: false})
+  else res.status(200).json({isLogged: true})
 })
 
 // GET: About logged user
@@ -148,7 +142,7 @@ app.get('/api/me', verifyToken, (req, res) => {
 });
 
 // GET: All photos
-app.get('/api/photos', verifyToken, (req, res) => {
+app.get('/api/photos', verifyToken, (req, res) => { // whole rewrite lol
   db.query('SELECT * FROM photos_general', (err, results) => {
     if (err) return res.status(500).json({ error: err });
     res.json(results);
@@ -162,237 +156,161 @@ app.post('/api/logout', verifyToken,(req, res) => {
 });
 
 // POST: Upload photo
-app.post('/api/addPhoto', verifyToken, upload.single('file'), (req, res) => {
+app.post('/api/addPhoto', verifyToken, upload.single('file'), async (req, res) => {
   try {
-    const folder = req.body.folder;
-    const userId = req.body.access;
-    console.log(req);
+    const { folder, access: userId } = req.body;
     const file = req.file;
     const name = file ? file.filename : (req.body.name || '');
     const size = file ? file.size : (req.body.size || 0);
 
     const dateObj = req.body.lastModified ? new Date(req.body.lastModified) : new Date();
     const dateStr = dateObj.toISOString().slice(0, 19).replace('T', ' ');
-
+    
     const query = "INSERT INTO `photos_general` (`name`, `date`, `user_id`, `folder`, `size`) VALUES ( ? , ? , ? , ? , ? )";
-    db.query(query, [name, dateStr, userId, folder, size], (err, results) => {
-      if (err) {
-        console.log("Nie udane dodanie", err.sqlMessage);
-        return res.status(500).json({ error: err.sqlMessage });
-      }
-      console.log("Udane dodanie");
-      res.status(200).json({ success: true });
-    });
+    const [[results]] = await db.promise().query(query, [name, dateStr, userId, folder, size]);
+    res.status(200).json({ success: true });
+
   } catch (err) {
-    console.log('Upload error', err);
-    res.status(500).json({ error: 'Upload failed' });
+    console.error("SQL INSERT ERROR:", err.sqlMessage ?? err.message);
+    res.status(500).json({ error: `Upload failed: ${err.sqlMessage ?? err.message}` });
   }
 });
 
-app.get('/api/getUsage', verifyToken, (req, res) => {
-  const userLogin = req.user.login; // FIXED
+// GET: Get usage info
+app.get('/api/getUsage', verifyToken, async (req, res) => {
+  try {
+    const userLogin = req.user.login;
 
-  // 1. Get user's main DB ID
-  db.query(
-    'SELECT db_main FROM users WHERE login = ?',
-    [userLogin],
-    (err, userRows) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ error: 'Server error' });
-      }
+    // Get DB id for user
+    const [userRows] = await db.promise().query(
+        'SELECT db_main FROM users WHERE login = ?',
+        [userLogin]
+    );
+    if (!userRows.length) return res.status(404).json({ error: 'User not found' });
+    const userDbId = userRows[0].db_main;
 
-      if (userRows.length === 0) {
-        return res.status(404).json({ error: 'User not found' });
-      }
+    // Get user db name
+    const [[userDb]] = await db.promise().query(
+      'SELECT name FROM db_photos WHERE id = ?',
+      [userDbId]
+    );
 
-      const userDbId = userRows[0].db_main;
+    // Calculate user usage
+    const [[userUsageRows]] = await db.promise().query(
+      `SELECT SUM(size) AS totalSize FROM \`${userDb.name}\``
+    );
+    const userUsage = Number(userUsageRows.totalSize) || 0;
+    
+    // Calculate total usage
+    const [allTableRows] = await db.promise().query('SELECT name FROM db_photos');
+    const results = await Promise.all(
+      allTableRows.map(row =>
+        db.promise().query(`SELECT SUM(size) AS totalSize FROM \`${row.name}\``)
+      )
+    );
 
-      // 2. Get table name
-      db.query(
-        'SELECT name FROM db_photos WHERE id = ?',
-        [userDbId],
-        (err, dbRows) => {
-          if (err) {
-            console.error(err);
-            return res.status(500).json({ error: 'Server error' });
-          }
+    const totalUsage = results.reduce((acc, [[r]]) => acc + Number(r.totalSize || 0), 0);
+    var totalUsagePercent = Number(((totalUsage / DISK_SIZE) * 100).toFixed(4));
+    var userUsagePercent = Number(((userUsage / DISK_SIZE) * 100).toFixed(4));
+    res.status(200).json({
+      success: true,
+      userUsage,
+      totalUsage,
+      totalUsagePercent,
+      userUsagePercent,
+      DISK_SIZE
+    });
 
-          if (dbRows.length === 0) {
-            return res.status(404).json({ error: 'PhotoDB not found' });
-          }
-
-          const tableName = dbRows[0].name;
-
-          // 3. Get the user’s usage
-          const userQuery = `SELECT SUM(size) AS totalSize FROM \`${tableName}\``;
-
-          db.query(userQuery, (err, sizeRows) => {
-            if (err) {
-              console.error(err);
-              return res.status(500).json({ error: 'Server error' });
-            }
-
-            const userUsage = Number(sizeRows[0].totalSize) || 0;
-
-            // 4. Get list of all photo tables
-            db.query("SELECT name FROM db_photos", (err, allTableRows) => {
-              if (err) {
-                console.error(err);
-                return res.status(500).json({ error: 'Server error' });
-              }
-
-              let remaining = allTableRows.length;
-              let totalUsage = 0;
-
-              if (remaining === 0) {
-                var totalUsagePercent = Number(((totalUsage / DISK_SIZE) * 100).toFixed(4));
-                var userUsagePercent = Number(((userUsage / DISK_SIZE) * 100).toFixed(4));
-                return res.json({
-                  success: true,
-                  userUsage,
-                  totalUsage,
-                  totalUsagePercent,
-                  userUsagePercent,
-                  DISK_SIZE
-                });
-              }
-
-              // 5. Loop through each table and sum usage
-              allTableRows.forEach(row => {
-                const table = row.name;
-                const q = `SELECT SUM(size) AS totalSize FROM \`${table}\``;
-
-                db.query(q, (err, resultRows) => {
-                  if (!err && resultRows.length > 0) {
-                    totalUsage += Number(resultRows[0].totalSize) || 0;
-                  }
-
-                  remaining--;
-
-                  // When all queries complete → send result
-                  if (remaining === 0) {
-                    var totalUsagePercent = Number(((totalUsage / DISK_SIZE) * 100).toFixed(4));
-                    var userUsagePercent = Number(((userUsage / DISK_SIZE) * 100).toFixed(4));
-                    res.json({
-                      success: true,
-                      userUsage,
-                      totalUsage,
-                      totalUsagePercent,
-                      userUsagePercent,
-                      DISK_SIZE
-                    });
-                  }
-                });
-              });
-            });
-          });
-        }
-      );
-    }
-  );
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: `Server error ${err}`});
+  }
 });
-app.get('/api/getDBs', verifyToken, (req, res) => {
-  const userLogin = req.user.login; // FIXED
 
-  // 1. Get user's main DB ID
-  db.query(
-    'SELECT db_main FROM users WHERE login = ?',
-    [userLogin],
-    (err, userRows) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ error: 'Server error' });
-      }
+// GET: Get DB names
+app.get('/api/getDBs', verifyToken, async (req, res) => {
+  try {
+    const userLogin = req.user.login;
 
-      if (userRows.length === 0) {
-        return res.status(404).json({ error: 'User not found' });
-      }
+    // Get DB id for user
+    const [userRows] = await db.promise().query(
+        'SELECT db_main FROM users WHERE login = ?',
+        [userLogin]
+    );
+    if (!userRows.length) return res.status(404).json({ error: 'User not found' });
+    const userDbId = userRows[0].db_main;
 
-      const userDbId = userRows[0].db_main;
+    // Get user db name
+    const [[userDb]] = await db.promise().query(
+      'SELECT name FROM db_photos WHERE id = ?',
+      [userDbId]
+    );
 
-      // 2. Get table name
-      db.query(
-        'SELECT name FROM db_photos WHERE id = ?',
-        [userDbId],
-        (err, dbRows) => {
-          if (err) {
-            console.error(err);
-            return res.status(500).json({ error: 'Server error' });
-          }
+    res.status(200).json({
+      success: true,
+      name: userDb.name
+    });
 
-          if (dbRows.length === 0) {
-            return res.status(404).json({ error: 'PhotoDB not found' });
-          }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: `Server error ${err}`});
+  }
+});
 
-          const tableName = dbRows[0].name;
-          res.json({
+// GET: Get photo count
+app.get('/api/getPhotoCount', verifyToken, async (req, res) => {
+    try {
+        const userLogin = req.user.login;
+
+        // Get DB id for user
+        const [userRows] = await db.promise().query(
+            'SELECT db_main FROM users WHERE login = ?',
+            [userLogin]
+        );
+        if (!userRows.length) return res.status(404).json({ error: 'User not found' });
+        const userDbId = userRows[0].db_main;
+
+        // Get user db name
+        const [[userDb]] = await db.promise().query(
+          'SELECT name FROM db_photos WHERE id = ?',
+          [userDbId]
+        );
+
+        // Count user photos
+        const [[userPhotos]] = await db.promise().query(
+            `SELECT COUNT(*) AS count FROM \`${userDb.name}\``
+        );
+
+        // Count general photos
+        const [[generalPhotos]] = await db.promise().query(
+            'SELECT COUNT(*) AS count FROM photos_general'
+        );
+
+        // Get all DB entries
+        const [allTables] = await db.promise().query('SELECT name FROM db_photos');
+
+        // Total size counting
+        let totalUsage = 0;
+        for (const row of allTables) {
+            const table = row.name;
+            const [[result]] = await db.promise().query(`SELECT COUNT(*) as count FROM \`${table}\``);
+
+            totalUsage += result?.count ?? 0;
+        }
+
+        return res.json({
             success: true,
-            tableName
-          });
-        }
-      );
-    }
-  );
-});
-app.get('/api/getPhotoCount', verifyToken, (req, res) => {
-  const userLogin = req.user.login; 
-  db.query(
-    'SELECT db_main FROM users WHERE login = ?',
-    [userLogin],
-    (err, userRows) => {
-      if (err) {
+            userDbPhotoCount: userPhotos.count,
+            generalDbPhotoCount: generalPhotos.count,
+            totalUsage
+        });
+
+    } catch (err) {
         console.error(err);
-        return res.status(500).json({ error: 'Server error' });
-      }
-
-      if (userRows.length === 0) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-
-      const userDbId = userRows[0].db_main;
-      console.log(userDbId);
-      db.query(
-        'SELECT COUNT(*) as count FROM db_photos WHERE id = ?',
-        [userDbId],
-        (err, dbRows) => {
-          if (err) {
-            console.error(err);
-            return res.status(500).json({ error: 'Server error' });
-          }
-
-          if (dbRows.length === 0) {
-            return res.status(404).json({ error: 'PhotoDB not found' });
-          }
-          
-              
-          const userDbPhotoCount = dbRows[0].count;
-          db.query(
-            'SELECT COUNT(*) as count FROM db_photos WHERE id = 1',
-            [userDbId],
-            (err, dbRows) => {
-              if (err) {
-                console.error(err);
-                return res.status(500).json({ error: 'Server error' });
-              }
-
-              if (dbRows.length === 0) {
-                return res.status(404).json({ error: 'PhotoDB not found' });
-              }
-
-              const generalDbPhotoCount = dbRows[0].count;
-              res.json({
-                success: true,
-                userDbPhotoCount,
-                generalDbPhotoCount
-              });
-            }
-          );
-        }
-      );
+        res.status(500).json({ error: `Server error ${err}`});
     }
-  )
 });
+
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`HTTP Server running on port ${PORT}`);

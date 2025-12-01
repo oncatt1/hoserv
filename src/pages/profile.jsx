@@ -1,3 +1,4 @@
+import { ErrorPopout } from '../components/common/ErrorPopout';
 import Loading from '../components/loading';
 import { useFetch } from '../hooks/useFetchGet';
 import { useUserStore} from '../utils/auth';
@@ -24,16 +25,18 @@ export default function Profile(){
     const dbNameUrl = `${import.meta.env.VITE_API_URL}/getDBs`;
     const photoCountUrl = `${import.meta.env.VITE_API_URL}/getPhotoCount`;
 
-    const { data: dataUsage } = useFetch(usageUrl);
-    const { data: dataDb } = useFetch(dbNameUrl);
-    const { data: dataPhotoCount } = useFetch(photoCountUrl);
+    const { data: dataUsage,  error: errorDataUsage} = useFetch(usageUrl);
+    const { data: dataDb, error: errorDataDb} = useFetch(dbNameUrl);
+    const { data: dataPhotoCount, error: errorDataPhotoCount } = useFetch(photoCountUrl);
 
+    if(errorDataDb || errorDataPhotoCount || errorDataUsage) return <ErrorPopout error={errorDataDb || errorDataPhotoCount || errorDataUsage} />;
     if(!dataUsage || !dataDb || !dataPhotoCount) return <Loading/>;
+    
     var count = dataPhotoCount.userDbPhotoCount + dataPhotoCount.generalDbPhotoCount;
+    if(user === import.meta.env.VITE_ADMIN_NAME) count /= 2;
 
     return(
-        <div className="p-8 opacity-0 animate-fadeIn">
-            moza po srodku moze zrobic wszystko
+        <div className="p-8 opacity-0 animate-fadeIn ">
             <div className="p-2 m-3 flex w-2/3 border-b-2 border-violet-700/20 dark:border-zinc-700/20 mb-10">
                 <div className=" flex-2/3  text-2xl ">
                     {user}
@@ -45,7 +48,7 @@ export default function Profile(){
             <div className="bg-purple-800/20 dark:bg-gray-800/20 p-6 rounded-t-2xl ">
                 <span className="text-xl border-b-2 border-violet-600/20 dark:border-zinc-600/20">Informacje</span>
                 <div className="">
-                    <div className="indent-3">Dostęp do: {dataDb.tableName}</div><br />
+                    <div className="indent-3">Dostęp do: {dataDb.name}</div><br />
                     <div className="indent-3">Ilość dostępnych zdjęć: {count}</div><br />
                     <div className="indent-3">Wykorzystanie dysków: {dataUsage.userUsagePercent}%</div>
                 </div>
