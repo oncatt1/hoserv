@@ -107,7 +107,7 @@ app.post('/api/login', async (req, res) => {
   try {
     const { login, password } = req.body;
     const query = `SELECT id, login FROM users WHERE login = ? AND password = ?`;
-    const [[results]] = await db.promise().query(query, [login, password]);
+    const [results] = await db.promise().query(query, [login, password]);
 
     if (results.length > 0) {
       const user = results[0];
@@ -167,7 +167,7 @@ app.post('/api/addPhoto', verifyToken, upload.single('file'), async (req, res) =
     const dateStr = dateObj.toISOString().slice(0, 19).replace('T', ' ');
     
     const query = "INSERT INTO `photos_general` (`name`, `date`, `user_id`, `folder`, `size`) VALUES ( ? , ? , ? , ? , ? )";
-    const [[results]] = await db.promise().query(query, [name, dateStr, userId, folder, size]);
+    const [results] = await db.promise().query(query, [name, dateStr, userId, folder, size]);
     res.status(200).json({ success: true });
 
   } catch (err) {
@@ -248,7 +248,8 @@ app.get('/api/getDBs', verifyToken, async (req, res) => {
 
     res.status(200).json({
       success: true,
-      name: userDb.name
+      name: userDb.name,
+      general: "photos_general"
     });
 
   } catch (err) {
@@ -309,6 +310,25 @@ app.get('/api/getPhotoCount', verifyToken, async (req, res) => {
         console.error(err);
         res.status(500).json({ error: `Server error ${err}`});
     }
+});
+
+
+app.post('/api/getDbTables', verifyToken, async (req, res) => {
+  try{
+    const dbName = req.body.dbName;
+    
+    const sql = `SELECT DISTINCT folder FROM \`${dbName}\``;
+    const [tableNames] = await db.promise().query(sql);
+
+    res.status(200).json({
+      success: true, 
+      tableNames: tableNames
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: `Server error ${err}`});
+  }
 });
 
 // Start server
