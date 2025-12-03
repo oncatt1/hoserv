@@ -18,18 +18,19 @@ export const getUser = async () => {
 
 export const useUserStore = create((set) => ({
   user: null,
+  initialized: false,
 
   fetchUser: async () => {
     try{
       const user = await getUser();
-      set({ user });
+      set({ user, initialized: true });
     }catch (error){
-      console.log("dupa");
-      set({user: null});
+      set({user: null, initialized: true });
     }
   },
-  setUser: (user) => set({ user }),
-  logout: () => set({ user: null }),
+  setUser: (user) => set({ user, initialized: true }),
+  setInitialized: (initialized) => set({ initialized }),
+  logout: () => set({ user: null, initialized: true  }),
 }));
 
 export const GetLoginState = async () => {
@@ -44,5 +45,6 @@ export const GetLoginState = async () => {
     return data.isLogged;
   } catch (err) {
     console.log('Error: ', err);
+    return false;
   }
 }

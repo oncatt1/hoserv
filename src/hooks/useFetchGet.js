@@ -16,7 +16,7 @@ export const useFetch = (url) => {
         
         const controller = new AbortController();
         
-        const fetchData = async () => {
+        const fetchData = async () => { 
             setLoading(true);
             setError(null);
             try {

@@ -3,8 +3,11 @@ import { AddForm } from "../components/photosadd/AddForm";
 import { ErrorPopout } from "../components/common/ErrorPopout";
 import { useAdd } from "../hooks/useAdd";
 import { useState } from "react";
+import { useUserStore } from "../utils/auth";
+import { useNavigate } from "react-router-dom";
+
 export default function AddPhoto(){
-    
+    const { user } = useUserStore();
     const { add, loading, error } = useAdd();
     const [formError, setFormError] = useState(null);
 

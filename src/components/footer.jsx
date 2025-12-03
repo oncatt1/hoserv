@@ -5,13 +5,14 @@ import { useUserStore } from "../utils/auth";
 
 function Footer(){
     let location = useLocation().pathname
+    if (location === "/" || location === "/login") return null;
+
+    
     const {user , fetchUser} = useUserStore();
     let usageUrl = user ? `${import.meta.env.VITE_API_URL}/getUsage` : null;
-
     const { data, error } = useFetch(usageUrl, { enabled: !!usageUrl });
 
     
-    if (location === "/" || location === "/login") return null;
     const setFooterDashes = (UsagePercent) => {
         var filled = Math.ceil(UsagePercent / 4);
         const empty = 25 - filled;

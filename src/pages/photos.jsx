@@ -10,7 +10,6 @@ export default function Photos(){
     const [type, setType] = useState('0');
     const [order, setOrder] = useState('0');
     const [size, setSize] = useState('0');
-
     const handleInputChange = (e) => {
         setInputValue(e.target.value);
     };
@@ -44,8 +43,6 @@ export default function Photos(){
 
         fetchPhotos();
     }, []);
-
-
     return(
         <div className="m-2">
             <div className="h-10 p-6 rounded-lg m-2 justify-between items-center flex bg-fuchsia-900/30 dark:bg-slate-700/60">

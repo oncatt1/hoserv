@@ -1,4 +1,3 @@
-
 import Welcome from "../pages/welcome";
 import Profile from "../pages/profile";
 import Photos from "../pages/photos";
@@ -8,12 +7,15 @@ import Admin from "../pages/admin/admin";
 import { GetLoginState, useUserStore } from "../utils/auth";
 import { useEffect, useState } from "react";
 import AddPhoto from "../pages/addphoto";
+import { useNavigate } from 'react-router-dom';
 
 export default function App(){
     const { user, fetchUser } = useUserStore();
     const [isLogged, setIsLogged] = useState(null);
-
+    const navigate = useNavigate();
+    
     useEffect(() => {
+        
         let mounted = true;
         const checkLoginAndFetch = async () => {
             try {
@@ -22,16 +24,23 @@ export default function App(){
                 setIsLogged(logged);
                 if (logged) {
                     fetchUser();
+                } else {
+                    navigate("/login");
                 }
             } catch (err) {
                 console.error('Failed to check login state', err);
+                if (mounted) setIsLogged(false);
             }
         };
 
         checkLoginAndFetch();
-
         return () => { mounted = false; };
-    }, [fetchUser]);
+    }, [fetchUser, navigate]);
+
+    if (isLogged === null) {
+        return null;
+    }
+
     return(
         <Routes>
             <Route path="/" element={<Welcome/>} />
