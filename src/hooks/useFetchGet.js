@@ -6,7 +6,6 @@ export const useFetch = (url) => {
     const [data, setData] = useState(null);
     const [trigger, setTrigger] = useState(0);
 
-    // This is the refetch function that was missing
     const refetch = useCallback(() => {
         setTrigger(prev => prev + 1);
     }, []);
@@ -43,8 +42,7 @@ export const useFetch = (url) => {
 
         return () => controller.abort();
 
-    }, [url, trigger]); // trigger added to dependencies
+    }, [url, trigger]);
 
-    // Make sure refetch is included in the return
     return { data, loading, error, refetch };
 };

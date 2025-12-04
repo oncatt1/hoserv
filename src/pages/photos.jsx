@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { act, useEffect, useState } from "react";
 import { Input }from "../components/photos/input";
-import { MdAddAPhoto } from "react-icons/md";
+import { MdAddAPhoto, MdClose } from "react-icons/md";
 import { Link } from "react-router-dom";
 import { PhotoShow } from "../components/photos/photo_show";
+import { useFormattedSize } from "../hooks/calculateSize";
+import PhotoDetails from "../components/photos/photoDetails";
 
 export default function Photos(){
     const [photos, setPhotos] = useState([]);
@@ -10,39 +12,40 @@ export default function Photos(){
     const [type, setType] = useState('0');
     const [order, setOrder] = useState('0');
     const [size, setSize] = useState('0');
-    const handleInputChange = (e) => {
-        setInputValue(e.target.value);
-    };
-    const handleSortChange = (e) => {
-        setType(e.target.value);
-    };
-    const handleOrderChange = (e) => {
-        setOrder(e.target.value);
-    };
-    const handleSizeChange = (e) => {
-        setSize(e.target.value);
-    };
+    
+    const [selectedPhoto, setSelectedPhoto] = useState(null);
+
+    const handleInputChange = (e) => setInputValue(e.target.value);
+    const handleSortChange = (e) => setType(e.target.value);
+    const handleOrderChange = (e) => setOrder(e.target.value);
+    const handleSizeChange = (e) => setSize(e.target.value);
+    
     useEffect(() => {
         const fetchPhotos = async () => {
             try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/photos`, {
-                credentials: 'include',
-            });
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/photos`, {
+                    credentials: 'include',
+                });
 
-            if (!res.ok) {
-                console.error('Failed to fetch photos:', res.status);
-                return;
-            }
-            const data = await res.json();
-            console.log(data);
-            setPhotos(data);
+                if (!res.ok) return;
+                const data = await res.json();
+                console.log(data);
+                setPhotos(data);
             } catch (err) {
-            console.error('Error fetching photos:', err);
+                console.error(err);
             }
         };
-
         fetchPhotos();
     }, []);
+
+    const onPhotoClick = (src, name) => {
+        const activePhoto = photos.find(p => p.name === name);
+        setSelectedPhoto({ src, name, activePhoto});
+    };
+
+    const closeLightBox = () => {
+        setSelectedPhoto(null);
+    };
     return(
         <div className="m-2">
             <div className="h-10 p-6 rounded-lg m-2 justify-between items-center flex bg-fuchsia-900/30 dark:bg-slate-700/60">
@@ -98,10 +101,15 @@ export default function Photos(){
                         alt="dupa"
                         className="w-52"
                         label={photo.name}
+                        onClick={() => onPhotoClick(src, photo.name)}
                         />
                     );
                 })}
             </div>
+            {selectedPhoto && (<PhotoDetails 
+                    selectedPhoto={selectedPhoto} 
+                    closeLightBox={closeLightBox} 
+                />)}
         </div>
     )
 }
