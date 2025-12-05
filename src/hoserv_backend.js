@@ -10,7 +10,7 @@ import jwt from 'jsonwebtoken';
 
 const app = express();
 const PORT = 3000;
-const DISK_SIZE = 900000000;
+const DISK_SIZE = 900_000_000_000;
 //const BASE_DIR = '/mnt/photos';
 const BASE_DIR = '/home/oncatt1/Desktop/photos/';
 const JWT_SECRET = 'M0z4n0_rc0o2h@i3t';
@@ -141,23 +141,33 @@ app.get('/api/me', verifyToken, (req, res) => {
   res.json({ user: req.user});
 });
 
-// GET: All photos
-app.get('/api/photos', verifyToken, (req, res) => { // whole rewrite lol
-  db.query('SELECT * FROM photos_general', (err, results) => {
-    if (err) return res.status(500).json({ error: err });
-    res.json(results);
-  });
+// POST: All photos
+app.post('/api/photos', verifyToken, async (req, res) => {
+  const folder = req.folder || "photos_general";
+  try{
+    const [dbRows] = await db.promise().query(
+        `SELECT * FROM ${folder}`,
+    );
+    res.status(200).json(dbRows);
+  } catch (err) {
+    console.error("SQL INSERT ERROR:", err.sqlMessage ?? err.message);
+    res.status(500).json({ error: `Upload failed: ${err.sqlMessage ?? err.message}` });
+  }
 });
 
 // POST: Log out
-app.post('/api/logout', verifyToken,(req, res) => {
+app.post('/api/logout', verifyToken, (req, res) => {
   res.clearCookie('token');
   res.status(200).json({ success: true });
 });
 
 // POST: Upload photo
 app.post('/api/addPhoto', verifyToken, upload.single('file'), async (req, res) => {
+  if (!req.body.access || !req.body.folder || !req.file)  {
+        return res.status(400).json({ success: false, message: 'Proszę podać folder, dostęp lub zdjęcie.' });
+    }
   try {
+    // upload info 
     const { folder, access: userId } = req.body;
     const file = req.file;
     const name = file ? file.filename : (req.body.name || '');
@@ -165,8 +175,14 @@ app.post('/api/addPhoto', verifyToken, upload.single('file'), async (req, res) =
 
     const dateObj = req.body.lastModified ? new Date(req.body.lastModified) : new Date();
     const dateStr = dateObj.toISOString().slice(0, 19).replace('T', ' ');
-    
-    const query = "INSERT INTO `photos_general` (`name`, `date`, `user_id`, `folder`, `size`) VALUES ( ? , ? , ? , ? , ? )";
+
+    // get the db names 
+    const [dbRows] = await db.promise().query(
+        'SELECT name FROM `db_photos`',
+    );
+    const dbName = dbRows[userId - 1].name;
+
+    const query = `INSERT INTO \`${dbName}\` (\`name\`, \`date\`, \`user_id\`, \`folder\`, \`size\`) VALUES ( ? , ? , ? , ? , ? )`;
     const [results] = await db.promise().query(query, [name, dateStr, userId, folder, size]);
     res.status(200).json({ success: true });
 

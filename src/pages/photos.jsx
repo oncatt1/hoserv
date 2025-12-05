@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { PhotoShow } from "../components/photos/photo_show";
 import { useFormattedSize } from "../hooks/calculateSize";
 import PhotoDetails from "../components/photos/photoDetails";
+import { useFetchPost } from "../hooks/useFetchPost";
 
 export default function Photos(){
     const [photos, setPhotos] = useState([]);
@@ -37,7 +38,8 @@ export default function Photos(){
         };
         fetchPhotos();
     }, []);
-
+    const url = `${import.meta.env.VITE_API_URL}/photos`;
+    setPhotos(useFetchPost(url, "photos_general"));
     const onPhotoClick = (src, name) => {
         const activePhoto = photos.find(p => p.name === name);
         setSelectedPhoto({ src, name, activePhoto});
