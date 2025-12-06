@@ -1,14 +1,15 @@
-import { act, useEffect, useState } from "react";
+import { act, useEffect, useMemo, useState } from "react";
 import { Input }from "../components/photos/input";
 import { MdAddAPhoto, MdClose } from "react-icons/md";
-import { Link } from "react-router-dom";
-import { PhotoShow } from "../components/photos/photo_show";
+import { Link, useSearchParams } from "react-router-dom";
+import { PhotoShow } from "../components/photos/photoShow";
 import { useFormattedSize } from "../hooks/calculateSize";
 import PhotoDetails from "../components/photos/photoDetails";
 import { useFetchPost } from "../hooks/useFetchPost";
+import Loading from "../components/loading";
+import { ErrorPopout } from "../components/common/ErrorPopout";
 
 export default function Photos(){
-    const [photos, setPhotos] = useState([]);
     const [inputValue, setInputValue] = useState('');
     const [type, setType] = useState('0');
     const [order, setOrder] = useState('0');
@@ -21,27 +22,19 @@ export default function Photos(){
     const handleOrderChange = (e) => setOrder(e.target.value);
     const handleSizeChange = (e) => setSize(e.target.value);
     
-    useEffect(() => {
-        const fetchPhotos = async () => {
-            try {
-                const res = await fetch(`${import.meta.env.VITE_API_URL}/photos`, {
-                    credentials: 'include',
-                });
-
-                if (!res.ok) return;
-                const data = await res.json();
-                console.log(data);
-                setPhotos(data);
-            } catch (err) {
-                console.error(err);
-            }
-        };
-        fetchPhotos();
-    }, []);
     const url = `${import.meta.env.VITE_API_URL}/photos`;
-    setPhotos(useFetchPost(url, "photos_general"));
+    // napraw kurwa to bo perm problmes
+    const [searchParams] = useSearchParams();
+    const currentFolder = searchParams.get("folder") || "";
+    const currentDb = searchParams.get("db") || "photos_general";
+
+    const photoOptions = useMemo(() => ({ folder: currentFolder, db: currentDb}), [currentDb, currentFolder]);
+    const { data: fetchedPhotos, loading, error } = useFetchPost(url, photoOptions);
+    if (loading) return <Loading />;
+    <ErrorPopout error={error} />
+
     const onPhotoClick = (src, name) => {
-        const activePhoto = photos.find(p => p.name === name);
+        const activePhoto = fetchedPhotos.find(p => p.name === name);
         setSelectedPhoto({ src, name, activePhoto});
     };
 
@@ -93,7 +86,7 @@ export default function Photos(){
                 </div>
             </div>
             <div>
-                {photos.map(photo => {
+                {fetchedPhotos?.map(photo => {
                     const src = `http://192.168.1.10:3000/photos/${photo.user_id}/${photo.folder}/${photo.name}`;
 
                     return (

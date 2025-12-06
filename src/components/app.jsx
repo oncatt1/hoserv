@@ -2,7 +2,7 @@ import Welcome from "../pages/welcome";
 import Profile from "../pages/profile";
 import Photos from "../pages/photos";
 import Login from "../pages/login";
-import { Route, Routes} from "react-router-dom";
+import { Route, Routes, useLocation} from "react-router-dom";
 import Admin from "../pages/admin/admin";
 import { GetLoginState, useUserStore } from "../utils/auth";
 import { useEffect, useState } from "react";
@@ -14,6 +14,8 @@ export default function App(){
     const [isLogged, setIsLogged] = useState(null);
     const navigate = useNavigate();
     
+    const location = useLocation().pathname;
+
     useEffect(() => {
         
         let mounted = true;
@@ -25,7 +27,7 @@ export default function App(){
                 if (logged) {
                     fetchUser();
                 } else {
-                    navigate("/login");
+                    if(location !== "/") navigate("/login");
                 }
             } catch (err) {
                 console.error('Failed to check login state', err);

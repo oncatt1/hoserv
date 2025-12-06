@@ -7,24 +7,20 @@ export const ErrorPopout = ({ error }) => {
     
     let messageToDisplay = '';
     
-    // 1. Try to access message directly if it is a standard object
     if (typeof error === 'object' && error !== null) {
         messageToDisplay = error.message;
     }
 
-    // 2. If message is still missing, check if 'error' is an unparsed JSON string
     if (!messageToDisplay && typeof error === 'string') {
         try {
             const parsedError = JSON.parse(error);
             messageToDisplay = parsedError?.message;
         } catch (e) {
-            // Not a parsable JSON string, use the whole string as the message
             messageToDisplay = error;
         }
     }
     const errorMessage = messageToDisplay || "Nieznany, spójrz w konsole";
     
-    console.log("Error object received by popout:", error);
     useEffect(() => {
         if (error) {
             setIsVisible(true);

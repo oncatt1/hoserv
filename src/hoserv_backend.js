@@ -143,12 +143,25 @@ app.get('/api/me', verifyToken, (req, res) => {
 
 // POST: All photos
 app.post('/api/photos', verifyToken, async (req, res) => {
-  const folder = req.folder || "photos_general";
+  const folder = req.body.folder || "";
+  const dbName = req.body.db || "photos_general";
   try{
+    // if folder provided, filter by it
+    if(folder){
+      const [dbRows] = await db.promise().query(
+          `SELECT * FROM \`${dbName}\` WHERE folder = ?`,
+          [folder]
+      );
+      res.status(200).json(dbRows);
+      return;
+    }
+    
+    // else return all photos
     const [dbRows] = await db.promise().query(
-        `SELECT * FROM ${folder}`,
+        `SELECT * FROM ${dbName}`,
     );
     res.status(200).json(dbRows);
+
   } catch (err) {
     console.error("SQL INSERT ERROR:", err.sqlMessage ?? err.message);
     res.status(500).json({ error: `Upload failed: ${err.sqlMessage ?? err.message}` });

@@ -12,10 +12,9 @@ export const useFetchPost = (url, options = null) => {
     }, []);
 
     useEffect(() => {  
-        if (!url || !options?.dbName) return;
+        if (!url || !options) return;
         
         const controller = new AbortController();
-        
         const fetchData = async () => {
             setLoading(true);
             setError(null);
@@ -27,7 +26,6 @@ export const useFetchPost = (url, options = null) => {
                     body: JSON.stringify(options),
                     signal: controller.signal
                 });
-                
                 if (!res.ok) throw new Error(`Nie udano zebrac danych ze ${url}`);
 
                 const json = await res.json();
