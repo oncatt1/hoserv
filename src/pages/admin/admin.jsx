@@ -1,4 +1,3 @@
-import { data } from "react-router-dom";
 import Loading from "../../components/loading";
 import { useFetch } from "../../hooks/useFetchGet";
 import { useUserStore } from "../../utils/auth";

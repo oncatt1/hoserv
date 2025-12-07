@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { FormInput } from "../common/FormInput";
+import { FormSelect } from "../common/FormSelect";
+import { useFetch } from "../../hooks/useFetchGet";
+import { useFetchPost } from "../../hooks/useFetchPost";
 
 export const AddForm = ({onSubmit, loading, error, onError}) => {
     const [ data, setData] = useState({});
@@ -42,6 +45,27 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
         setData(prev => ({ ...prev, ["size"]: file.size})) // in bytes
         setImg(URL.createObjectURL(file));
     }
+
+    
+    const dbUrl = `${import.meta.env.VITE_API_URL}/getDBs`; 
+    const dbTablesUrl = `${import.meta.env.VITE_API_URL}/getDbTables`;
+
+    const { data: dataDb, refetch: refetchDbs } = useFetch(dbUrl);
+    
+    const userDbName = data?.name;
+    const generalDbName = data?.general;
+
+    const userOptions = useMemo(() => {
+        return userDbName ? { dbName: userDbName } : null;
+    }, [userDbName]);
+
+    const generalOptions = useMemo(() => {
+        return generalDbName ? { dbName: generalDbName } : null;
+    }, [generalDbName]);
+
+    const { data: userData } = useFetchPost(dbTablesUrl, userOptions);
+    const { data: generalData } = useFetchPost(dbTablesUrl, generalOptions);
+
     return(
         <form onSubmit={handleSubmit} method="post"  className="justify-center items-center flex-col flex">
             <FormInput
@@ -53,16 +77,19 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
                 onChange={handlePhotoChange}
                 className="mb-2"
             />
-            <FormInput
+            <FormSelect
+                count={5}
+                data={dataDb}
                 type="text"
                 label="Dostęp"
                 name="access"
                 value={data?.access}
                 loading={loading}
                 onChange={handleChange}
-                className="p-2 mb-2 bg-slate-800 "
-            />
-            <FormInput
+                className="mb-2 p-2 bg-slate-800 "
+            /> 
+            <FormSelect
+                count={5}
                 label="Folder"
                 name="folder"
                 value={data?.folder}

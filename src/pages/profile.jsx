@@ -2,7 +2,7 @@ import { ErrorPopout } from '../components/common/ErrorPopout';
 import Loading from '../components/loading';
 import { useFetch } from '../hooks/useFetchGet';
 import { useUserStore} from '../utils/auth';
-import { data, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 export default function Profile(){
     const navigate = useNavigate();
