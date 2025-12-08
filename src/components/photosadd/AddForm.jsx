@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { FormInput } from "../common/FormInput";
-import { FormSelect } from "../common/FormSelect";
 import { useFetch } from "../../hooks/useFetchGet";
 import { useFetchPost } from "../../hooks/useFetchPost";
+import { SelectFolder } from "./SelectFolder";
+import { SelectAccess } from "./SelectAccess";
 
 export const AddForm = ({onSubmit, loading, error, onError}) => {
     const [ data, setData] = useState({});
@@ -46,11 +47,10 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
         setImg(URL.createObjectURL(file));
     }
 
-    
     const dbUrl = `${import.meta.env.VITE_API_URL}/getDBs`; 
     const dbTablesUrl = `${import.meta.env.VITE_API_URL}/getDbTables`;
 
-    const { data: dataDb, refetch: refetchDbs } = useFetch(dbUrl);
+    const { data: dataDb } = useFetch(dbUrl);
     
     const userDbName = data?.name;
     const generalDbName = data?.general;
@@ -67,7 +67,7 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
     const { data: generalData } = useFetchPost(dbTablesUrl, generalOptions);
 
     return(
-        <form onSubmit={handleSubmit} method="post"  className="justify-center items-center flex-col flex">
+        <form onSubmit={handleSubmit} method="post" className="justify-center items-center flex-col flex">
             <FormInput
                 label="Plik"
                 type="file"
@@ -77,8 +77,8 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
                 onChange={handlePhotoChange}
                 className="mb-2"
             />
-            <FormSelect
-                count={5}
+            
+            <SelectAccess
                 data={dataDb}
                 type="text"
                 label="Dostęp"
@@ -86,17 +86,21 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
                 value={data?.access}
                 loading={loading}
                 onChange={handleChange}
-                className="mb-2 p-2 bg-slate-800 "
+                className="mb-2 p-2 bg-slate-800"
             /> 
-            <FormSelect
-                count={5}
-                label="Folder"
-                name="folder"
-                value={data?.folder}
-                loading={loading}
-                onChange={handleChange}
-                className="mb-2 p-2 bg-slate-800 "
-            />
+            {data?.access && (
+                <SelectFolder 
+                    data={dataDb}
+                    type="text"
+                    label="Dostęp"
+                    name="access"
+                    value={data?.folder}
+                    loading={loading}
+                    onChange={handleChange}
+                    className="mb-2 p-2 bg-slate-800" 
+                />
+            )}
+            
             <img src={img} className="mt-10 shadow-lg max-h-52">
             </img>
             <button type="submit" 

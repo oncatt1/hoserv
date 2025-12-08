@@ -1,6 +1,6 @@
-export const FormSelect = ({label, name, value, loading, onChange, count, className, data }) => {
+export const SelectFolder = ({label, name, value, loading, onChange, count, className, data }) => {
     const optionsArray = Array.from({ length: count }, (_, i) => i + 1);
-
+    const {name: dbName, general} = data || {};
     return(
         <div className="flex flex-col w-full">
             <span className="font-semibold text-[17px] pb-1">{label}</span>
