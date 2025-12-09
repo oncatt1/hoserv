@@ -12,7 +12,7 @@ const app = express();
 const PORT = 3000;
 const DISK_SIZE = 900_000_000_000;
 //const BASE_DIR = '/mnt/photos';
-const BASE_DIR = '/home/oncatt1/Desktop/photos/';
+const BASE_DIR = '/home/oncatt1/Desktop/hoserv/hoserv/photos'; // change
 const JWT_SECRET = 'M0z4n0_rc0o2h@i3t';
 const allowedOrigins = [
   'http://192.168.1.21:5173',
