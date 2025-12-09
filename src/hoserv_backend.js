@@ -271,13 +271,14 @@ app.get('/api/getDBs', verifyToken, async (req, res) => {
 
     // Get user db name
     const [[userDb]] = await db.promise().query(
-      'SELECT name FROM db_photos WHERE id = ?',
+      'SELECT id, name FROM db_photos WHERE id = ?',
       [userDbId]
     );
 
     res.status(200).json({
       success: true,
       name: userDb.name,
+      id: userDb.id,
       general: "photos_general"
     });
 

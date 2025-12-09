@@ -52,8 +52,8 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
 
     const { data: dataDb } = useFetch(dbUrl);
     
-    const userDbName = data?.name;
-    const generalDbName = data?.general;
+    const userDbName = dataDb?.name;
+    const generalDbName = dataDb?.general;
 
     const userOptions = useMemo(() => {
         return userDbName ? { dbName: userDbName } : null;
@@ -65,6 +65,13 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
 
     const { data: userData } = useFetchPost(dbTablesUrl, userOptions);
     const { data: generalData } = useFetchPost(dbTablesUrl, generalOptions);
+
+    const folderData = useMemo(() => {
+        if (data?.access === '1') { 
+            return generalData || [];
+        }
+        return userData || []; 
+    }, [data?.access, userData, generalData]);
 
     return(
         <form onSubmit={handleSubmit} method="post" className="justify-center items-center flex-col flex">
@@ -90,10 +97,10 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
             /> 
             {data?.access && (
                 <SelectFolder 
-                    data={dataDb}
+                    data={folderData}
                     type="text"
                     label="Dostęp"
-                    name="access"
+                    name="folder"
                     value={data?.folder}
                     loading={loading}
                     onChange={handleChange}

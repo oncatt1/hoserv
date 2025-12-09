@@ -3,7 +3,9 @@ import { useUserStore } from "../../utils/auth";
 export const SelectAccess = ({label, name, value, loading, onChange, className, data }) => {
 
     const { user } = useUserStore();
-    const {name: dbName, general} = data || {};
+    const {name: dbName, id: id, general} = data || {};
+    const formatedName = dbName?.replace("photos_", "");
+    const formatedNameGeneral = general?.replace("photos_", "");
     return(
         <div className="flex flex-col w-full">
             <span className="font-semibold text-[17px] pb-1">{label}</span>
@@ -19,9 +21,9 @@ export const SelectAccess = ({label, name, value, loading, onChange, className, 
                     Wybierz dostep
                 </option>
                 {user !== import.meta.env.VITE_ADMIN_NAME && (
-                    <option value={dbName}>{dbName}</option>
+                    <option value={id}>{formatedName}</option>
                 )}
-                <option value={general}>{general}</option>
+                <option value="1">{formatedNameGeneral}</option>
             </select>
         </div>
     )
