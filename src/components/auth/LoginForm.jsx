@@ -26,6 +26,7 @@ export const LoginForm = ({ onSubmit, loading, error}) => {
                 type="text"
                 name="login"
                 value={credentials.login}
+                loading={loading}
                 onChange={handleChange}
             />
             <FormInput
@@ -33,6 +34,7 @@ export const LoginForm = ({ onSubmit, loading, error}) => {
                 type="password"
                 name="password"
                 value={credentials.password}
+                loading={loading}
                 onChange={handleChange}
             />
             <button type="submit" 
