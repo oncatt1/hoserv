@@ -168,6 +168,36 @@ app.post('/api/photos', verifyToken, async (req, res) => {
   }
 });
 
+// POST: Search for photos
+app.post('/api/search', verifyToken, async (req, res) => {
+  const folder = req.body.folder || "";
+  const dbName = req.body.db || "photos_general";
+  const search = req.body.search || "";
+  const searchLike = '%' + search + '%';
+  try{
+    // if folder provided, filter by it
+    if(folder){
+      const [dbRows] = await db.promise().query(
+          `SELECT * FROM \`${dbName}\` WHERE folder = ? and name LIKE ?`,
+          [folder, searchLike]
+      );
+      res.status(200).json(dbRows);
+      return;
+    }
+    
+    // else return all photos
+    const [dbRows] = await db.promise().query(
+        `SELECT * FROM \`${dbName}\` WHERE name LIKE ?`,
+        [searchLike]
+    );
+    res.status(200).json(dbRows);
+
+  } catch (err) {
+    console.error("SQL INSERT ERROR:", err.sqlMessage ?? err.message);
+    res.status(500).json({ error: `Upload failed: ${err.sqlMessage ?? err.message}` });
+  }
+});
+
 // POST: Log out
 app.post('/api/logout', verifyToken, (req, res) => {
   res.clearCookie('token');

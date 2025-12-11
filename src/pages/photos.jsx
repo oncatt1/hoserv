@@ -8,28 +8,80 @@ import Loading from "../components/loading";
 import { ErrorPopout } from "../components/common/ErrorPopout";
 import CustomSelect from "../components/common/CustomSelect";
 import FormInput from "../components/common/FormInput";
+import { useDebounce } from "../hooks/useDebounce";
 
 export default function Photos(){
+    // --- State and Handlers ---
     const [inputValue, setInputValue] = useState('');
     const [type, setType] = useState('0');
     const [order, setOrder] = useState('0');
     const [size, setSize] = useState('0');
-    
     const [selectedPhoto, setSelectedPhoto] = useState(null);
+    
+    const debouncedSearchTerm = useDebounce(inputValue, 1000);
 
     const handleInputChange = (e) => setInputValue(e.target.value);
     const handleSortChange = (e) => setType(e.target.value);
     const handleOrderChange = (e) => setOrder(e.target.value);
     const handleSizeChange = (e) => setSize(e.target.value);
     
-    const url = `${import.meta.env.VITE_API_URL}/photos`;
-    // napraw kurwa to bo perm problmes
+    // --- URL and API Setup ---
     const [searchParams] = useSearchParams();
     const currentFolder = searchParams.get("folder") || "";
     const currentDb = searchParams.get("db") || "photos_general";
 
-    const photoOptions = useMemo(() => ({ folder: currentFolder, db: currentDb}), [currentDb, currentFolder]);
-    const { data: fetchedPhotos, loading, error } = useFetchPost(url, photoOptions);
+    const searchUrl = `${import.meta.env.VITE_API_URL}/search`;
+    const generalUrl = `${import.meta.env.VITE_API_URL}/photos`;
+
+    // 1. Logic for Search Fetch (Only runs if search term exists)
+    const searchOptions = useMemo(() => {
+        // Only return options if we have a debounced search term
+        return debouncedSearchTerm 
+            ? { folder: currentFolder, db: currentDb, search: debouncedSearchTerm }
+            : null;
+    }, [currentDb, currentFolder, debouncedSearchTerm]);
+
+    // Use a different endpoint/logic for searching
+    const { 
+        data: searchData, 
+        loading: searchLoading, 
+        error: searchError 
+    } = useFetchPost(searchUrl, searchOptions);
+
+
+    // 2. Logic for General Fetch (Only runs if NO search term exists)
+    const generalOptions = useMemo(() => {
+        // Only return options if there is NO debounced search term
+        return !debouncedSearchTerm
+            ? { folder: currentFolder, db: currentDb } 
+            : null;
+    }, [currentDb, currentFolder, debouncedSearchTerm]);
+
+    // Use the general endpoint/logic for displaying the folder contents
+    const { 
+        data: generalData, 
+        loading: generalLoading, 
+        error: generalError 
+    } = useFetchPost(generalUrl, generalOptions);
+
+
+    // 3. Determine Final Data and Status based on search status
+    let photos, loading, error;
+    
+    if (debouncedSearchTerm) {
+        // If searching, use search results and status
+        photos = searchData;
+        loading = searchLoading;
+        error = searchError;
+    } else {
+        // If not searching, use general folder contents and status
+        photos = generalData;
+        loading = generalLoading;
+        error = generalError;
+    }
+    
+    const finalPhotos = photos || [];
+            
     if (loading) return <Loading />;
     <ErrorPopout error={error} />
 
@@ -57,6 +109,7 @@ export default function Photos(){
         { value: "1", label: "Duże ikony" },
         { value: "2", label: "Szczegóły" },
     ]
+
     return(
         <div className="m-2">
             <div className="h-10 p-8 rounded-lg m-2 justify-between items-center flex bg-fuchsia-900/30 dark:bg-slate-700/60">
@@ -99,7 +152,7 @@ export default function Photos(){
                 </div>
             </div>
             <div>
-                {fetchedPhotos?.map(photo => {
+                {photos?.map(photo => {
                     const src = `http://192.168.1.10:3000/photos/${photo.user_id}/${photo.folder}/${photo.name}`;
 
                     return (
