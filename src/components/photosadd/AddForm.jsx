@@ -6,21 +6,28 @@ import { SelectFolder } from "./SelectFolder";
 import { SelectAccess } from "./SelectAccess";
 
 export const AddForm = ({onSubmit, loading, error, onError}) => {
-    const [ data, setData] = useState({});
-    const [ img, setImg] = useState(null);
+    const [data, setData] = useState({});
+    const [files, setFiles] = useState([]);
+    const [imgPreview, setImgPreview] = useState(null);
     
     const handleSubmit = (e) => {
         e.preventDefault();
         const formData = new FormData();
 
         Object.entries(data || {}).forEach(([key, value]) => {
-            if (value instanceof File || value instanceof Blob) {
-                formData.append(key, value, value.name);
-            } else if (value !== undefined && value !== null) {
+            if (value !== undefined && value !== null) {
                 formData.append(key, value);
             }
         });
-        console.log(formData);
+        
+        files.forEach((file) => {
+            formData.append('files', file, file.name);
+        });
+        
+        if (files.length > 0) {
+             formData.append('lastModified', files[0].lastModifiedDate);
+        }
+
         onSubmit(formData);
     }
     
@@ -33,18 +40,32 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
     }
 
     const handlePhotoChange = (e) => {
-        const file = e.target.files && e.target.files[0]; // change later for multiple
-        if (!file) return;
-        if (!file.type.startsWith("image/")) {
-            if (typeof onError === "function") onError("Wybrany plik nie jest obrazem.");
+        const selectedFiles = Array.from(e.target.files);
+        
+        if (selectedFiles.length === 0) return;
+
+        const invalidFile = selectedFiles.find(file => 
+            !file.type.startsWith("image/") && !file.type.startsWith("video/")
+        );
+
+        if (invalidFile) {
+            if (typeof onError === "function") onError(`Plik '${invalidFile.name}' nie jest zdjęciem ani wideo.`);
+            setFiles([]);
+            setImgPreview(null);
             return;
         }
+
         if (typeof onError === "function") onError(null);
-        setData(prev => ({ ...prev, ["file"]: file}));
-        setData(prev => ({ ...prev, ["name"]: file.name}));
-        setData(prev => ({ ...prev, ["lastModified"]: file.lastModifiedDate}))
-        setData(prev => ({ ...prev, ["size"]: file.size})) // in bytes
-        setImg(URL.createObjectURL(file));
+        
+        setFiles(selectedFiles);
+        
+        const firstFile = selectedFiles[0];
+        if (firstFile.type.startsWith("image/")) {
+             setImgPreview(URL.createObjectURL(firstFile));
+        } else {
+             setImgPreview(null); 
+        }
+
     }
 
     const dbUrl = `${import.meta.env.VITE_API_URL}/getDBs`; 
@@ -73,13 +94,27 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
         return userData || []; 
     }, [data?.access, userData, generalData]);
 
+    const getFileCountLabel = (count) => {
+        if (count === 1) {
+            return `Wybrano: 1 plik.`;
+        }
+        
+        const lastDigit = count % 10;
+        const lastTwoDigits = count % 100;
+        
+        if ((lastDigit >= 2 && lastDigit <= 4) && !(lastTwoDigits >= 12 && lastTwoDigits <= 14)) {
+            return `Wybrano: ${count} pliki.`;
+        }
+        
+        return `Wybrano: ${count} plików.`;
+    };
+
     return(
         <form onSubmit={handleSubmit} method="post" className="justify-center items-center flex-col flex">
             <FormInput
                 label="Plik"
                 type="file"
-                name="file"
-                value={data?.file}
+                name="files"
                 loading={loading}
                 onChange={handlePhotoChange}
                 className="mb-2"
@@ -107,12 +142,17 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
                     className="mb-2 p-2 bg-slate-800" 
                 />
             )}
-            
-            <img src={img} className="mt-10 shadow-lg max-h-52" />
+
+            {imgPreview && <img src={imgPreview} className="mt-10 shadow-lg max-h-52" />}
+            {files.length > 0 && (
+                <p className="mt-2 text-sm text-gray-400">
+                    {getFileCountLabel(files.length)}
+                </p>
+            )}
 
             <button 
             type="submit" 
-            disabled={loading}
+            disabled={loading || files.length === 0}
             className="
                 w-60 px-4 py-2.5 mt-10
                 bg-gray-900 text-gray-200 text-lg rounded-lg
@@ -123,7 +163,7 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
                 cursor-pointer shadow-lg
             "
             >
-            {loading ? "Dodawanie..." : "Dodaj"}
+            {loading ? "Dodawanie..." : `Dodaj`}
             </button>
         </form>
     )

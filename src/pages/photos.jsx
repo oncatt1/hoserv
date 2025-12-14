@@ -1,37 +1,26 @@
-import { act, useEffect, useMemo, useState } from "react";
-import { MdAddAPhoto, MdClose } from "react-icons/md";
-import { Link, useSearchParams } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { PhotoShow } from "../components/photos/photoShow";
 import PhotoDetails from "../components/photos/photoDetails";
 import { useFetchPost } from "../hooks/useFetchPost";
 import Loading from "../components/loading";
 import { ErrorPopout } from "../components/common/ErrorPopout";
-import CustomSelect from "../components/common/CustomSelect";
-import FormInput from "../components/common/FormInput";
 import { useDebounce } from "../hooks/useDebounce";
-
+import PhotoSelectBar from "../components/photos/photoSelectBar";
+import { PhotoDetailsHeader } from "../components/photos/photoDetailsHeader";
 export default function Photos(){
-    // --- State and Handlers ---
-    const [inputValue, setInputValue] = useState('');
-    const [type, setType] = useState('0');
-    const [order, setOrder] = useState('0');
-    const [size, setSize] = useState('0');
     const [selectedPhoto, setSelectedPhoto] = useState(null);
-    
-    const debouncedSearchTerm = useDebounce(inputValue, 1000);
 
-    const handleInputChange = (e) => setInputValue(e.target.value);
-    const handleSortChange = (e) => setType(e.target.value);
-    const handleOrderChange = (e) => setOrder(e.target.value);
-    const handleSizeChange = (e) => setSize(e.target.value);
-    
-    // --- URL and API Setup ---
     const [searchParams] = useSearchParams();
     const currentFolder = searchParams.get("folder") || "";
     const currentDb = searchParams.get("db") || "photos_general";
 
     const searchUrl = `${import.meta.env.VITE_API_URL}/search`;
     const generalUrl = `${import.meta.env.VITE_API_URL}/photos`;
+
+    // We'll use a state for inputValue that gets managed by PhotoSelectBar
+    const [inputValue, setInputValue] = useState('');
+    const debouncedSearchTerm = useDebounce(inputValue || '', 1000);
 
     // 1. Logic for Search Fetch (Only runs if search term exists)
     const searchOptions = useMemo(() => {
@@ -82,87 +71,68 @@ export default function Photos(){
     
     const finalPhotos = photos || [];
             
-    if (loading) return <Loading />;
-    <ErrorPopout error={error} />
-
     const onPhotoClick = (src, name) => {
-        const activePhoto = fetchedPhotos.find(p => p.name === name);
+        const activePhoto = finalPhotos.find(p => p.name === name);
         setSelectedPhoto({ src, name, activePhoto});
     };
 
     const closeLightBox = () => {
         setSelectedPhoto(null);
     };
-    const optionsType = [
-        { value: "0", label: "Tytuł" },
-        { value: "1", label: "Rozmiar" },
-        { value: "2", label: "Data utworzenia" },
-        { value: "3", label: "Data dodania" },
-        { value: "4", label: "Typ" }
-    ];
-    const optionsOrder = [
-        { value: "0", label: "Malejąco" },
-        { value: "1", label: "Rosnąco" },
-    ];
-    const optionsSize = [
-        { value: "0", label: "Średnie ikony" },
-        { value: "1", label: "Duże ikony" },
-        { value: "2", label: "Szczegóły" },
-    ]
 
+    
+    // Now call PhotoSelectBar with the final photos data
+    const { barJsx, sortedPhotos, size } = PhotoSelectBar({ finalPhotos, inputValue, setInputValue });
+    if (loading) return <Loading />;
+    <ErrorPopout error={error} />
+
+    const getPhotoClass = (sizeValue) => {
+        switch (sizeValue) {
+            case "0": // medium: 5 columns
+                return {
+                    photo: "w-52",
+                    grid: "grid grid-cols-5 gap-4",
+                    detailed: false
+                };
+            case "1": // big: 3 columns
+                return {
+                    photo: "w-80",
+                    grid: "grid grid-cols-3 gap-6",
+                    detailed: false
+                };
+            case "2": // detailed
+                return {
+                    photo: "w-full flex-row items-center justify-between",
+                    grid: "flex flex-col space-y-2",
+                    detailed: true
+                };
+            default:
+                return {
+                    photo: "w-52",
+                    grid: "grid grid-cols-5 gap-4",
+                    detailed: false
+                };
+        }
+    };
+    const { photo: photoClass, grid: gridClass, detailed: gridDetailed } = getPhotoClass(size);
+    
     return(
         <div className="m-2">
-            <div className="h-10 p-8 rounded-lg m-2 justify-between items-center flex bg-fuchsia-900/30 dark:bg-slate-700/60">
-                <div className="m-2 p-1 flex-5/6">
-                    <FormInput
-                        type="text" 
-                        name="search" 
-                        placeholder="Wyszukaj zdjęcia" 
-                        onChange={handleInputChange} 
-                        value={inputValue} 
-                        className="w-170" 
-                    />
-                </div>
-                <div className="m-2 p-1 flex-1/6"> {/* type select */}
-                    <CustomSelect 
-                        name="type" 
-                        value={type}
-                        onChange={handleSortChange}
-                        options = {optionsType}
-                    />
-                </div>
-                <div className="m-2 p-1 flex-1/6"> {/* order select */}
-                    <CustomSelect 
-                        name="order"  
-                        value={order}
-                        onChange={handleOrderChange}
-                        options={optionsOrder}
-                    />
-                </div>
-                <div className="m-2 p-1 flex-1/6"> {/* view size select*/}
-                    <CustomSelect 
-                        name="view" 
-                        value={size}
-                        onChange={handleSizeChange}
-                        options={optionsSize}
-                    />
-                </div>
-                <div className="m-2 p-1">
-                    <Link to="/add"><MdAddAPhoto className="size-8"/></Link>
-                </div>
-            </div>
-            <div>
-                {photos?.map(photo => {
+            { barJsx }
+            {gridDetailed && <PhotoDetailsHeader />}
+            <div className={gridClass}>
+                {sortedPhotos?.map(photo => {
                     const src = `http://192.168.1.10:3000/photos/${photo.user_id}/${photo.folder}/${photo.name}`;
 
                     return (
                         <PhotoShow
                         key={photo.id}
                         src={src}
-                        alt="dupa"
-                        className="w-52"
-                        label={photo.name}
+                        alt="Brak zdjęcia"
+                        className={photoClass}
+                        photo={photo}
                         onClick={() => onPhotoClick(src, photo.name)}
+                        detailed={gridDetailed}
                         />
                     );
                 })}

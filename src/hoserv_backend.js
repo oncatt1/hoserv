@@ -205,34 +205,44 @@ app.post('/api/logout', verifyToken, (req, res) => {
 });
 
 // POST: Upload photo
-app.post('/api/addPhoto', verifyToken, upload.single('file'), async (req, res) => {
-  if (!req.body.access || !req.body.folder || !req.file)  {
-        return res.status(400).json({ success: false, message: 'Proszę podać folder, dostęp lub zdjęcie.' });
+app.post('/api/addPhoto', verifyToken, upload.array('files'), async (req, res) => {
+    if (!req.body.folder || !req.body.access || !req.files || req.files.length === 0) {
+        return res.status(400).json({ success: false, message: 'Proszę podać folder, dostęp lub zdjęcie/wideo.' });
     }
-  try {
-    // upload info 
-    const { folder, access: userId } = req.body;
-    const file = req.file;
-    const name = file ? file.filename : (req.body.name || '');
-    const size = file ? file.size : (req.body.size || 0);
 
-    const dateObj = req.body.lastModified ? new Date(req.body.lastModified) : new Date();
-    const dateStr = dateObj.toISOString().slice(0, 19).replace('T', ' ');
+    try {
+        const { folder, access: userId } = req.body;
+        const files = req.files;
+        
+        // 2. Get the target database name
+        const [dbRows] = await db.promise().query(
+            'SELECT name FROM `db_photos`',
+        );
+        const dbName = dbRows[userId - 1].name;
+        
+        // Prepare the common INSERT query structure
+        const query = `INSERT INTO \`${dbName}\` (\`name\`, \`date\`, \`user_id\`, \`folder\`, \`size\`, \`type\`) VALUES (?, ?, ?, ?, ?, ?)`;
+        
+        const insertionPromises = files.map(file => {
+            const name = file.filename;
+            const size = file.size;
+            const type = file.mimetype;
+            const dateObj = req.body.lastModified ? new Date(req.body.lastModified) : new Date();
+            const dateStr = dateObj.toISOString().slice(0, 19).replace('T', ' ');
 
-    // get the db names 
-    const [dbRows] = await db.promise().query(
-        'SELECT name FROM `db_photos`',
-    );
-    const dbName = dbRows[userId - 1].name;
+            // 3. Execute query for each file
+            return db.promise().query(query, [name, dateStr, userId, folder, size, type]);
+        });
+        
+        // Wait for all database inserts to complete
+        await Promise.all(insertionPromises);
 
-    const query = `INSERT INTO \`${dbName}\` (\`name\`, \`date\`, \`user_id\`, \`folder\`, \`size\`) VALUES ( ? , ? , ? , ? , ? )`;
-    const [results] = await db.promise().query(query, [name, dateStr, userId, folder, size]);
-    res.status(200).json({ success: true });
+        res.status(200).json({ success: true, count: files.length, message: `Dodano ${files.length} plików.` });
 
-  } catch (err) {
-    console.error("SQL INSERT ERROR:", err.sqlMessage ?? err.message);
-    res.status(500).json({ error: `Upload failed: ${err.sqlMessage ?? err.message}` });
-  }
+    } catch (err) {
+        console.error("SQL INSERT ERROR:", err.sqlMessage ?? err.message);
+        res.status(500).json({ error: `Upload failed: ${err.sqlMessage ?? err.message}` });
+    }
 });
 
 // GET: Get usage info

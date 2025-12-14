@@ -77,6 +77,9 @@ export const FormInput = ({
         <input
           ref={fileRef}
           type="file"
+          multiple
+          
+          accept="image/*,video/*"
           name={name}
           onChange={onChange}
           disabled={loading}
