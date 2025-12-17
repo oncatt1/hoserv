@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FormInput } from "../common/FormInput";
+import { FormButton } from "../common/FormButton";
 
 export const LoginForm = ({ onSubmit, loading, error}) => {
     const [ credentials, setCredentials] = useState({
@@ -37,14 +38,11 @@ export const LoginForm = ({ onSubmit, loading, error}) => {
                 loading={loading}
                 onChange={handleChange}
             />
-            <button type="submit" 
-                disabled={loading}
-                className="rounded-2xl cursor-pointer mt-10
-                        bg-purple-900/20 min-h-2 w-50 hover:bg-purple-950/40
-                        dark:bg-gray-900/20 dark:hover:bg-gray-800/20
-                        text-white p-4 shadow-2xl">
-                {loading ? "Logowanie..." : "Zaloguj się"}
-            </button>
+            <FormButton 
+                loading={loading}
+                text="Zaloguj się"
+                loadingText="Logowanie..."
+            />
         </form>
     );
 };

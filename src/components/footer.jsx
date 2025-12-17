@@ -19,24 +19,43 @@ function Footer(){
         return "[" + "=".repeat(filled) + "-".repeat(empty) + "]";
     }
     return (
-    <footer className="flex clear-both bottom-0 h-[50px] 2xl:h-[70px] items-center px-10
-        bg-gradient-to-br to-blue-900 shadow-blue-600/70 dark:from-gray-900 dark:shadow-stone-800 dark:to-zinc-900 
-        shadow-2xl justify-between max-xl:text-xs"
-    >  
+    <footer className="
+        flex items-center justify-between
+        h-12 2xl:h-16
+        px-8
+        bg-slate-800/70
+        backdrop-blur-md
+        border-t border-slate-700/50
+        shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.6)]
+        max-xl:text-xs
+    ">  
         {data && (
             <>
-                <div className="flex-1/2">
-                    Pojemność dysków: {data.totalUsagePercent}% 
+                <div className="flex flex-col basis-1/2">
+                <span className="text-xs text-slate-400">
+                    Pojemność dysków
+                </span>
+                <span className="font-medium text-slate-200">
+                    {data.totalUsagePercent}%
+                    <span className="ml-2 text-slate-500">
                     {setFooterDashes(data.totalUsagePercent)}
+                    </span>
+                </span>
                 </div>
 
-                <div className="flex-1/2 text-right">
-                    Twoje wykorzystanie: {data.userUsagePercent}%
+                <div className="flex flex-col basis-1/2 text-right">
+                <span className="text-xs text-slate-400">
+                    Twoje wykorzystanie
+                </span>
+                <span className="font-medium text-slate-200">
+                    {data.userUsagePercent}%
+                    <span className="ml-2 text-slate-500">
                     {setFooterDashes(data.userUsagePercent)}
+                    </span>
+                </span>
                 </div>
             </>
         )}
-
         <ErrorPopout error={error} />
     </footer>
 );

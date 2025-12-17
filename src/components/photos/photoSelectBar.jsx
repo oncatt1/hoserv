@@ -40,7 +40,8 @@ export default function PhotoSelectBar({ finalPhotos, inputValue = '', setInputV
         }, [finalPhotos, type, order]);
 
     const barJsx = (
-        <div className="h-10 p-8 rounded-lg m-2 justify-between items-center flex bg-fuchsia-900/30 dark:bg-slate-700/60">
+        <div className="h-10 p-8 rounded-lg justify-between items-center 
+            flex bg-slate-700/50">
             <div className="m-2 p-1 flex-5/6">
                 <FormInput
                     type="text" 

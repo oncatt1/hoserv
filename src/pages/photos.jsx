@@ -117,13 +117,15 @@ export default function Photos(){
     const { photo: photoClass, grid: gridClass, detailed: gridDetailed } = getPhotoClass(size);
     
     return(
-        <div className="m-2">
-            { barJsx }
-            {gridDetailed && <PhotoDetailsHeader />}
+        <div className="m-5 opacity-0 animate-fadeIn">
+            <div className="sticky bg-slate-800 p-2 rounded-2xl top-5">
+                { barJsx }
+                {gridDetailed && <PhotoDetailsHeader />}
+            </div>
             <div className={gridClass}>
                 {sortedPhotos?.map(photo => {
-                    const src = `http://192.168.1.10:3000/photos/${photo.user_id}/${photo.folder}/${photo.name}`;
-
+                    const src = `${import.meta.env.VITE_PHOTO_URL}/photos/${photo.user_id}/${photo.folder}/${photo.name}`;
+                    console.log(src);
                     return (
                         <PhotoShow
                         key={photo.id}

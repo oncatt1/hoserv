@@ -47,13 +47,37 @@ function SidebarContent() {
         navigate(`/photos?folder=${encodeURIComponent(name)}&db=${encodeURIComponent(db)}`);
     }
 
+    const headerClass = `
+        font-medium text-gray-400
+        cursor-pointer
+        m-1 px-3 py-2
+        transition-all duration-200
+        bg-slate-900/30
+        hover:bg-slate-900/20 hover:text-gray-300
+        rounded-md
+        border-t border-gray-600/60
+    `;
+
+
+    const rowClass = `
+        cursor-pointer
+        ml-6
+        px-3 py-2
+        transition-all duration-200
+        hover:text-gray-300 hover:bg-slate-900/10
+        border-b border-gray-700/60
+        rounded-sm
+        truncate
+    `;
+
     return (
-        <aside className="w-1/6 overflow-y-auto h-[525px] bg-violet-800/30 dark:bg-slate-800/40 rounded-br-4xl p-3">
+        <aside className="w-64 h-full overflow-y-auto p-3 opacity-0 animate-fadeIn
+        bg-slate-800/60 backdrop-blur-md border-r border-slate-700/50">
             {/* User Database Section */}
             {data.name && (
                 <div className="p-2">
                     <div 
-                        className="font-medium text-gray-500 cursor-pointer bg-slate-900/40 hover:bg-slate-800/30 rounded-2xl m-1 p-1 transition-colors"
+                        className={headerClass}
                         onClick={() => onTableNameClick("", data.name)} 
                     >
                         {data.name.replace("photos_", "")}
@@ -62,7 +86,7 @@ function SidebarContent() {
                         <div 
                             key={i} 
                             onClick={() => onTableNameClick(entry.folder, data.name)} 
-                            className="cursor-pointer indent-5 bg-slate-900/40 hover:bg-slate-800/40 rounded-2xl m-1 p-1 transition-colors"
+                            className={rowClass}
                         >
                             {entry.folder}
                         </div>
@@ -74,7 +98,7 @@ function SidebarContent() {
             {user !== import.meta.env.VITE_ADMIN_NAME && data.general && (
                 <div className="p-2">
                     <div 
-                        className="font-medium text-gray-500 cursor-pointer bg-slate-900/40 hover:bg-slate-800/30 rounded-2xl m-1 p-1 transition-colors"
+                        className={headerClass}
                         onClick={() => onTableNameClick("", data.general)} 
                     >
                         {data.general.replace("photos_", "")}
@@ -83,7 +107,7 @@ function SidebarContent() {
                         <div 
                             key={i} 
                             onClick={() => onTableNameClick(entry.folder, data.general)} 
-                            className="cursor-pointer indent-5 bg-slate-900/40 hover:bg-slate-800/40 rounded-2xl m-1 p-1 transition-colors"
+                            className={rowClass}
                         >
                             {entry.folder}
                         </div>

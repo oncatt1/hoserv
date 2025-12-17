@@ -14,7 +14,7 @@ export const PhotoShow = ({
 }) => {
     const formattedSize = useFormattedSize(photo.size || 0);
     const formattedDate = photo.date.replace("T", " ");
-    let containerClasses = "p-4 m-2 shadow-2xl bg-purple-900/20 dark:bg-slate-800/20 rounded-md";
+    let containerClasses = "p-4 m-2 mr-4 shadow-2xl bg-purple-900/20 dark:bg-slate-700/20 rounded-xl";
 
     if (detailed) {
         containerClasses += " flex items-center justify-between w-full cursor-pointer";
