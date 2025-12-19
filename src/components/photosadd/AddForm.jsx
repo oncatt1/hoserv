@@ -27,7 +27,7 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
         if (files.length > 0) {
              formData.append('lastModified', files[0].lastModifiedDate);
         }
-
+        
         onSubmit(formData);
     }
     

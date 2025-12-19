@@ -1,19 +1,15 @@
 import { useFormattedSize } from "../../hooks/calculateSize";
 
 export const PhotoShow = ({ 
-    id, 
     src, 
     alt = '', 
     photo = '', 
     onClick, 
     className = '', 
     detailed = false,
-
-    fileSize,
-    dateAdded 
 }) => {
     const formattedSize = useFormattedSize(photo.size || 0);
-    const formattedDate = photo.date.replace("T", " ");
+    const formattedDate = photo.date.replace("T", " "); 
     let containerClasses = "p-4 m-2 mr-4 shadow-2xl bg-purple-900/20 dark:bg-slate-700/20 rounded-xl";
 
     if (detailed) {
@@ -49,11 +45,20 @@ export const PhotoShow = ({
             ) : (
                 <>
                    <div className="flex-grow flex items-center justify-center w-full"> 
-                        <img 
-                            src={src} 
-                            alt={alt} 
-                            className={`block ${className} object-contain`} 
-                        />
+                        {photo.type == "video/mp4" ? (
+                            <video 
+                                src={src} 
+                                alt={alt} 
+                                className={`block ${className} object-contain`} 
+                                controls
+                            />
+                        ) : (
+                            <img 
+                                src={src} 
+                                alt={alt} 
+                                className={`block ${className} object-contain`} 
+                            />
+                        )}
                     </div>
 
                     <div className="w-full text-center mt-2 px-1 flex-shrink-0"> 
