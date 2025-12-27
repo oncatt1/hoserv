@@ -7,12 +7,16 @@ import fs from 'fs-extra';
 import path from 'path';
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
-//import helmet from 'helmet';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import mongoSanitize from 'express-mongo-sanitize';
+import DOMPurify from 'isomorphic-dompurify';
 
 const app = express();
 const PORT = 3000;
 const DISK_SIZE = 900_000_000_000;
-const BASE_DIR = '/home/oncatt1/Desktop/hoserv/hoserv/photos/';
+//const BASE_DIR = '/mnt/photos';
+const BASE_DIR = '/home/oncatt1/Desktop/hoserv/photos'; // change
 const JWT_SECRET = 'M0z4n0_rc0o2h@i3t';
 const allowedOrigins = [
   'http://192.168.1.21:5173',
@@ -37,37 +41,38 @@ const corsOptions = {
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
 };
-
 app.use(cors(corsOptions));
+app.use(helmet()); // Security headers
+app.use(mongoSanitize()); // Prevent NoSQL injection and XSS
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(cookieParser());
 
-// app.use(
-//   helmet({
-//     crossOriginResourcePolicy: { policy: "cross-origin" },
-//   })
-// );
-
-app.use(
-  '/photos',
-  cors(corsOptions),
-  express.static(BASE_DIR, {
-    setHeaders: (res, filePath) => {
-      const type = mime.lookup(filePath);
-      if (type) {
-        res.setHeader('Content-Type', type);
-      }
-      res.setHeader('Content-Disposition', 'inline');
-    }
-  })
-);
-
-app.use('/api', (req, res, next) => {
-  const origin = req.headers.origin;
-  if (!origin || originAllowed(origin)) return next();
-  return res.status(403).json({ error: 'CORS origin not allowed' });
+// Rate limiting middleware
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts per window
+  message: 'Zbyt wiele prób logowania. Spróbuj ponownie za 15 minut.',
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
-app.use(express.json());
-app.use(cookieParser());
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 100, // 100 requests per window
+  message: 'Zbyt wiele żądań. Spróbuj ponownie za minutę.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.user?.id, // More lenient for authenticated users
+});
+
+const uploadLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 10, // 10 uploads per minute
+  message: 'Zbyt wiele uploadów. Spróbuj ponownie za minutę.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 const db = mysql.createConnection({
   host: 'localhost',
@@ -76,12 +81,19 @@ const db = mysql.createConnection({
   database: 'hoserv'
 });
 
-// const db = mysql.createConnection({
-//   host: 'localhost',
-//   user: 'root',
-//   password: '',
-//   database: 'hoserv'
-// });
+// Input validation helper
+const validateInput = (input, maxLength = 255) => {
+  if (typeof input !== 'string') return null;
+  const sanitized = input.trim().substring(0, maxLength);
+  // Remove null bytes and control characters
+  return sanitized.replace(/[\x00-\x1F\x7F]/g, '');
+};
+
+// Validate folder/table names (prevent SQL injection)
+const validateTableName = (name) => {
+  if (!/^[a-zA-Z0-9_]+$/.test(name)) return null;
+  return name;
+};
 
 
 // ======== Configs ========
@@ -123,9 +135,15 @@ const upload = multer({ storage });
 // ======== API Endpoints ========
 
 // POST: Login
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', loginLimiter, async (req, res) => {
   try {
-    const { login, password } = req.body;
+    const login = validateInput(req.body.login, 50);
+    const password = validateInput(req.body.password, 100);
+
+    if (!login || !password) {
+      return res.status(400).json({ success: false, message: 'Nieprawidłowe dane wejściowe' });
+    }
+
     const query = `SELECT id, login FROM users WHERE login = ? AND password = ?`;
     const [results] = await db.promise().query(query, [login, password]);
 
@@ -135,19 +153,19 @@ app.post('/api/login', async (req, res) => {
 
       res.cookie('token', token, {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: 'strict',
         secure: false,
         path: '/',
-        maxAge: 60 * 60 * 1000 // 1000minutes
+        maxAge: 60 * 60 * 1000
       });
 
       res.status(200).json({ success: true });
     } else res.status(401).json({ success: false, message: 'Nieprawidłowe dane logowania' });
 
-  }catch (err) {
-      res.status(500).json({ error: `Server error ${err}`});
+  } catch (err) {
+    console.error('Login error:', err.message);
+    res.status(500).json({ error: 'Błąd serwera' });
   }
-
 });
 
 // GET: Return if logged in
@@ -175,14 +193,14 @@ app.get('/api/user', verifyToken, async (req, res) => {
 });
 
 // POST: All photos
-app.post('/api/photos', verifyToken, async (req, res) => {
-  const folder = req.body.folder || "";
-  const dbName = req.body.db || "photos_general";
+app.post('/api/photos', apiLimiter, verifyToken, async (req, res) => {
+  const folder = validateInput(req.body.folder, 100);
+  const dbName = validateTableName(req.body.db) || "photos_general";
   try{
     // if folder provided, filter by it
     if(folder){
       const [dbRows] = await db.promise().query(
-          `SELECT * FROM \`${dbName}\` WHERE folder = ?`,
+          `SELECT * FROM \`${dbName}\` WHERE folder = ? LIMIT 10000`,
           [folder]
       );
       res.status(200).json(dbRows);
@@ -191,27 +209,27 @@ app.post('/api/photos', verifyToken, async (req, res) => {
     
     // else return all photos
     const [dbRows] = await db.promise().query(
-        `SELECT * FROM ${dbName}`,
+        `SELECT * FROM \`${dbName}\` LIMIT 10000`,
     );
     res.status(200).json(dbRows);
 
   } catch (err) {
-    console.error("SQL INSERT ERROR:", err.sqlMessage ?? err.message);
-    res.status(500).json({ error: `Upload failed: ${err.sqlMessage ?? err.message}` });
+    console.error("SQL error:", err.message);
+    res.status(500).json({ error: 'Błąd przy pobieraniu zdjęć' });
   }
 });
 
 // POST: Search for photos
-app.post('/api/search', verifyToken, async (req, res) => {
-  const folder = req.body.folder || "";
-  const dbName = req.body.db || "photos_general";
-  const search = req.body.search || "";
+app.post('/api/search', apiLimiter, verifyToken, async (req, res) => {
+  const folder = validateInput(req.body.folder, 100);
+  const dbName = validateTableName(req.body.db) || "photos_general";
+  const search = validateInput(req.body.search, 100);
   const searchLike = '%' + search + '%';
   try{
     // if folder provided, filter by it
     if(folder){
       const [dbRows] = await db.promise().query(
-          `SELECT * FROM \`${dbName}\` WHERE folder = ? and name LIKE ?`,
+          `SELECT * FROM \`${dbName}\` WHERE folder = ? and name LIKE ? LIMIT 1000`,
           [folder, searchLike]
       );
       res.status(200).json(dbRows);
@@ -220,14 +238,14 @@ app.post('/api/search', verifyToken, async (req, res) => {
     
     // else return all photos
     const [dbRows] = await db.promise().query(
-        `SELECT * FROM \`${dbName}\` WHERE name LIKE ?`,
+        `SELECT * FROM \`${dbName}\` WHERE name LIKE ? LIMIT 1000`,
         [searchLike]
     );
     res.status(200).json(dbRows);
 
   } catch (err) {
-    console.error("SQL INSERT ERROR:", err.sqlMessage ?? err.message);
-    res.status(500).json({ error: `Upload failed: ${err.sqlMessage ?? err.message}` });
+    console.error("SQL error:", err.message);
+    res.status(500).json({ error: 'Błąd przy wyszukiwaniu' });
   }
 });
 
@@ -238,28 +256,43 @@ app.post('/api/logout', verifyToken, (req, res) => {
 });
 
 // POST: Upload photo
-app.post('/api/addPhoto', verifyToken, upload.array('files'), async (req, res) => {
+app.post('/api/addPhoto', uploadLimiter, verifyToken, upload.array('files'), async (req, res) => {
     if (!req.body.folder || !req.body.access || !req.files || req.files.length === 0) {
         return res.status(400).json({ success: false, message: 'Proszę podać folder, dostęp lub zdjęcie/wideo.' });
     }
 
     try {
-        const { folder, access: userId } = req.body;
+        const folder = validateInput(req.body.folder, 100);
+        const userId = parseInt(req.body.access, 10);
+        
+        if (!folder || isNaN(userId) || userId < 1) {
+          return res.status(400).json({ success: false, message: 'Nieprawidłowe dane' });
+        }
+
         const files = req.files;
         
         // 2. Get the target database name
         const [dbRows] = await db.promise().query(
-            'SELECT name FROM `db_photos`',
+            'SELECT name FROM `db_photos` WHERE id = ?',
+            [userId]
         );
-        const dbName = dbRows[userId - 1].name;
+        
+        if (!dbRows.length) {
+          return res.status(400).json({ success: false, message: 'Nieprawidłowy dostęp' });
+        }
+        
+        const dbName = validateTableName(dbRows[0].name);
+        if (!dbName) {
+          return res.status(400).json({ success: false, message: 'Błąd w konfiguracji bazy' });
+        }
         
         // Prepare the common INSERT query structure
         const query = `INSERT INTO \`${dbName}\` (\`name\`, \`date\`, \`user_id\`, \`folder\`, \`size\`, \`type\`) VALUES (?, ?, ?, ?, ?, ?)`;
         
         const insertionPromises = files.map(file => {
-            const name = file.filename;
-            const size = file.size;
-            const type = file.mimetype;
+            const name = validateInput(file.filename, 255) || file.filename;
+            const size = parseInt(file.size, 10) || 0;
+            const type = validateInput(file.mimetype, 100) || 'unknown';
             const dateObj = req.body.lastModified ? new Date(req.body.lastModified) : new Date();
             const dateStr = dateObj.toISOString().slice(0, 19).replace('T', ' ');
 
@@ -273,31 +306,35 @@ app.post('/api/addPhoto', verifyToken, upload.array('files'), async (req, res) =
         res.status(200).json({ success: true, count: files.length, message: `Dodano ${files.length} plików.` });
 
     } catch (err) {
-        console.error("SQL INSERT ERROR:", err.sqlMessage ?? err.message);
-        res.status(500).json({ error: `Upload failed: ${err.sqlMessage ?? err.message}` });
+        console.error("Upload error:", err.message);
+        res.status(500).json({ error: 'Błąd przy uploadzei pliku' });
     }
 });
 
 // POST: Add a folder todo
-app.post('/api/addFolder', verifyToken, async (req, res) => {
+app.post('/api/addFolder', apiLimiter, verifyToken, async (req, res) => {
   try{
+    const folder = validateInput(req.body.folder, 100);
+    const id = parseInt(req.body.id, 10);
 
-    const folder = req.body.folder;
-    const id = req.body.id;
+    if (!folder || isNaN(id) || id < 1) {
+      return res.status(400).json({ error: "Nieprawidłowe dane" });
+    }
+
     const queryCheck = `SELECT * FROM db_folders WHERE name = ? AND userId = ?`
     const query = `INSERT INTO db_folders (\`name\`, \`userId\`) VALUES (?, ?)`;
     
     const [resultsCheck] = await db.promise().query( queryCheck, [folder, id] );
     if(resultsCheck.length != 0){
-      res.status(500).json({ error: "Folder o tej nazwie już istnieje!"});
+      res.status(400).json({ error: "Folder o tej nazwie już istnieje!"});
       return;
     }
     const [results] = await db.promise().query( query, [folder, id] );
     res.status(200).json({ success: true });
 
     } catch (err) {
-        console.error("SQL INSERT ERROR:", err.sqlMessage ?? err.message);
-        res.status(500).json({ error: `Upload failed: ${err.sqlMessage ?? err.message}` });
+        console.error("Folder error:", err.message);
+        res.status(500).json({ error: 'Błąd przy tworzeniu folderu' });
     }
 })
 // GET: Get usage info
@@ -438,11 +475,15 @@ app.get('/api/getPhotoCount', verifyToken, async (req, res) => {
 });
 
 
-app.post('/api/getDbTables', verifyToken, async (req, res) => { //rework
+app.post('/api/getDbTables', apiLimiter, verifyToken, async (req, res) => {
   try{
-    const dbName = req.body.dbName;
+    const dbName = validateTableName(req.body.dbName);
     
-    const sql = `SELECT DISTINCT folder FROM \`${dbName}\``; // needs rework for adding folders
+    if (!dbName) {
+      return res.status(400).json({ error: 'Nieprawidłowa nazwa bazy' });
+    }
+    
+    const sql = `SELECT DISTINCT folder FROM \`${dbName}\` LIMIT 1000`;
     const [tableNames] = await db.promise().query(sql);
 
     res.status(200).json({
@@ -451,24 +492,28 @@ app.post('/api/getDbTables', verifyToken, async (req, res) => { //rework
     });
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: `Server error ${err}`});
+    console.error("DB tables error:", err.message);
+    res.status(500).json({ error: 'Błąd przy pobieraniu tabel' });
   }
 });
 
-app.post('/api/getFolders', verifyToken, async (req, res) => { 
+app.post('/api/getFolders', apiLimiter, verifyToken, async (req, res) => { 
   try {
-    const access = req.body.access;
+    const access = parseInt(req.body.access, 10);
+
+    if (isNaN(access) || access < 1) {
+      return res.status(400).json({ error: 'Nieprawidłowy dostęp' });
+    }
 
     const query = `SELECT id, name FROM db_folders WHERE userId = ?`;
-    const [result] = await db.promise().query(query, access);
+    const [result] = await db.promise().query(query, [access]);
     res.status(200).json({
       result: result
     });
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: `Server error ${err}`});
+    console.error("Folders error:", err.message);
+    res.status(500).json({ error: 'Błąd przy pobieraniu folderów' });
   }
 });
 // Start server

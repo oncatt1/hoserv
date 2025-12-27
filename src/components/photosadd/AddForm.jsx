@@ -12,18 +12,34 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
     const [imgPreview, setImgPreview] = useState(null);
 
     const [searchParams] = useSearchParams();
+    
+    const dbUrl = `${import.meta.env.VITE_API_URL}/getDBs`; 
+    const folderUrl = `${import.meta.env.VITE_API_URL}/getFolders`;
+    const { data: dataDb, refetch: refetchDbs } = useFetch(dbUrl);
 
     useEffect(() => {
         const urlFolder = searchParams.get("folder");
         const urlDb = searchParams.get("db");
 
-        if ((urlFolder || urlDb) && Object.keys(data).length === 0) {
+        // Initialize form data from URL parameters
+        if ((urlFolder || urlDb) && Object.keys(data).length === 0 && dataDb) {
+            // Convert db name to access id
+            let accessId = "";
+            if (urlDb) {
+                if (urlDb === "general") {
+                    accessId = "1";
+                } else {
+                    // Check if it matches user's db
+                    accessId = String(dataDb?.id) || "";
+                }
+            }
+            
             setData({
-                access: urlDb || "",
+                access: accessId,
                 folder: urlFolder || ""
             });
         }
-    }, [searchParams, data]);
+    }, [searchParams, dataDb]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -42,7 +58,7 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
         if (files.length > 0) {
              formData.append('lastModified', files[0].lastModifiedDate);
         }
-        
+
         onSubmit(formData);
     }
     
@@ -82,10 +98,6 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
         }
 
     }
-
-    const dbUrl = `${import.meta.env.VITE_API_URL}/getDBs`; 
-    const folderUrl = `${import.meta.env.VITE_API_URL}/getFolders`;
-    const { data: dataDb, refetch: refetchDbs } = useFetch(dbUrl);
     
     const userOptions = useMemo(() => {
         return dataDb ? { access: dataDb?.id } : null;
@@ -99,20 +111,6 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
         }
         return userData?.result || []; 
     }, [data?.access, userData, generalData]);
-
-    // Handle folder data updates when access changes
-    useEffect(() => {
-        if (data?.access && data?.folder) {
-            // Reset folder if it's not in the current folderData
-            const folderExists = folderData.some(folder => String(folder.id) === String(data.folder));
-            if (!folderExists && folderData.length > 0) {
-                setData(prev => ({
-                    ...prev,
-                    folder: ""
-                }));
-            }
-        }
-    }, [folderData, data?.access]);
 
     const getFileCountLabel = (count) => {
         if (count === 1) {
@@ -131,7 +129,6 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
     
     return(
         <form onSubmit={handleSubmit} method="post" className="justify-center items-center flex-col flex">
-            naprawic to 
             <FormInput
                 label="Plik"
                 type="file"
@@ -146,7 +143,7 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
                 type="text"
                 label="Dostęp"
                 name="access"
-                value={String(data?.access || "")}
+                value={data?.access}
                 loading={loading}
                 onChange={handleChange}
                 className="mb-2 p-2 bg-slate-800"
@@ -157,7 +154,7 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
                     type="text"
                     label="Dostęp"
                     name="folder"
-                    value={String(data?.folder || "")}
+                    value={data?.folder}
                     loading={loading}
                     onChange={handleChange}
                     className="mb-2 p-2 bg-slate-800" 

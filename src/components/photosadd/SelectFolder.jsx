@@ -4,7 +4,7 @@ export const SelectFolder = ({label, name, value, loading, onChange, className, 
 
     const tables = data || [];
      const options = tables.map((table) => ({
-        value: String(table.id),
+        value: table.id,
         label: table.name,
     }));
     return(
@@ -12,7 +12,7 @@ export const SelectFolder = ({label, name, value, loading, onChange, className, 
             <span className="font-semibold text-[17px] pb-1">{label}</span>
             <CustomSelect
                 name={name} 
-                value={String(value ?? "")}
+                value={value ?? ""}
                 loading={loading}
                 onChange={onChange}
                 className={`w-60 ${className}`}

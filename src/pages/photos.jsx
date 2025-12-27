@@ -79,6 +79,26 @@ export default function Photos(){
     const closeLightBox = () => {
         setSelectedPhoto(null);
     };
+    
+    const onNextPhoto = () => {
+        if (!selectedPhoto) return;
+        const currentIndex = sortedPhotos.findIndex(p => p.name === selectedPhoto.name);
+        if (currentIndex < sortedPhotos.length - 1) {
+            const nextPhoto = sortedPhotos[currentIndex + 1];
+            const src = `${import.meta.env.VITE_PHOTO_URL}/photos/${nextPhoto.user_id}/${nextPhoto.folder}/${nextPhoto.name}`;
+            onPhotoClick(src, nextPhoto.name);
+        }
+    };
+    
+    const onPrevPhoto = () => {
+        if (!selectedPhoto) return;
+        const currentIndex = sortedPhotos.findIndex(p => p.name === selectedPhoto.name);
+        if (currentIndex > 0) {
+            const prevPhoto = sortedPhotos[currentIndex - 1];
+            const src = `${import.meta.env.VITE_PHOTO_URL}/photos/${prevPhoto.user_id}/${prevPhoto.folder}/${prevPhoto.name}`;
+            onPhotoClick(src, prevPhoto.name);
+        }
+    };
 
     // Now call PhotoSelectBar with the final photos data
     const { barJsx, sortedPhotos, size } = PhotoSelectBar({ finalPhotos, inputValue, setInputValue});
@@ -140,7 +160,9 @@ export default function Photos(){
             </div>
             {selectedPhoto && (<PhotoDetails 
                     selectedPhoto={selectedPhoto} 
-                    closeLightBox={closeLightBox} 
+                    closeLightBox={closeLightBox}
+                    onNextPhoto={onNextPhoto}
+                    onPrevPhoto={onPrevPhoto}
                 />)}
         </div>
     )

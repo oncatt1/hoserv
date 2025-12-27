@@ -38,7 +38,7 @@ export default function Profile(){
    return (
     <div className="p-8 opacity-0 animate-fadeIn flex flex-col items-center">
         {/* User header */}
-        <div className="flex w-2/3 p-4 mb-10 border-b-2 border-zinc-700/20 rounded-lg">
+        <div className="flex w-2/3 p-4 mb-10 border-b-2 border-slate-700/40 rounded-lg">
             <div className="flex-2/3 text-2xl font-semibold text-gray-200">
                 {user}
             </div>
@@ -51,7 +51,7 @@ export default function Profile(){
         </div>
 
         {/* User info card */}
-        <div className="bg-gray-800/20 p-6 rounded-2xl shadow-inner w-2/3">
+        <div className="bg-gray-800/20 p-6 rounded-2xl shadow-inner w-2/3 border border-slate-700/50">
             <span className="text-xl font-semibold border-b-2 border-zinc-600/20 pb-2 mb-4 inline-block">
                 Informacje
             </span>

@@ -17,16 +17,12 @@ export const getSortComparer = (type, order) => (a, b) => {
             bValue = b.size;
             break;
         case '2': // Data utworzenia (Created Date)
-            aValue = a.created_at; // Assuming 'created_at' field
-            bValue = b.created_at;
+            aValue = a.date; // Using 'date' field from database
+            bValue = b.date;
             break;
-        case '3': // Data dodania (Uploaded Date)
-            aValue = a.uploaded_at; // Assuming 'uploaded_at' field
-            bValue = b.uploaded_at;
-            break;
-        case '4': // Typ (File Type)
-            aValue = a.file_type;
-            bValue = b.file_type;
+        case '3': // Typ (File Type)
+            aValue = a.type; // Using 'type' field from database
+            bValue = b.type;
             break;
         default:
             // Fallback: don't sort or use a default property

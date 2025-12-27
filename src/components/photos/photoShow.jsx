@@ -50,13 +50,13 @@ export const PhotoShow = ({
 
             ) : (
                 <>
-                   <div className={`flex-grow flex items-center justify-center w-full ${videoBg}`}> 
+                   <div className={`flex-grow flex items-center justify-center w-full h-32 ${videoBg}`}> 
                      {isVideo ? 
                         <>
                             <video
                                 src={src} 
                                 alt={alt} 
-                                className={`block ${className} object-contain`}
+                                className="block w-full h-full object-cover rounded-lg"
                                 type="video/mp4"
                                 muted
                                 playsInline
@@ -67,7 +67,7 @@ export const PhotoShow = ({
                         <img 
                             src={src} 
                             alt={alt} 
-                            className={`block ${className} object-contain`} 
+                            className="block w-full h-full object-cover rounded-lg" 
                         />
                      }
                     </div>

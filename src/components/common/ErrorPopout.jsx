@@ -58,7 +58,7 @@ export const ErrorPopout = ({ error }) => {
         <div
             onClick={handleClick}
             className={`${classState}    
-            fixed top-20 right-5 w-100 bg-rose-950 rounded-xl p-4 z-50 shadow-lg border-2 border-black cursor-pointer text-sm`}>
+            fixed top-20 right-5 w-100 bg-rose-950 rounded-xl p-4 z-50 shadow-lg border-2 border-red-700/60 cursor-pointer text-sm`}>
             <p className="text-white text-2xl font-bold">Błąd: </p>
             <span className="text-white">{errorMessage}</span>
         </div>
