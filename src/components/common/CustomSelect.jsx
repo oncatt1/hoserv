@@ -54,7 +54,7 @@ export const CustomSelect = ({
     setIsOpen(false);
   };
 
-  const selectedOption = options.find((opt) => opt.value === value);
+  const selectedOption = options.find((opt) => String(opt.value) === String(value));
 
   return (
     <div ref={dropdownRef} className={`relative w-60 ${containerClassName}`}>

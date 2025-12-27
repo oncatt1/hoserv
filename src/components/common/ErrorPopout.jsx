@@ -19,6 +19,10 @@ export const ErrorPopout = ({ error }) => {
             messageToDisplay = error;
         }
     }
+    if (!messageToDisplay){
+        const parsedError = JSON.parse(error);
+        messageToDisplay = parsedError?.error;
+    }
     const errorMessage = messageToDisplay || "Nieznany, spójrz w konsole";
     
     useEffect(() => {

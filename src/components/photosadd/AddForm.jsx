@@ -1,15 +1,30 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FormInput } from "../common/FormInput";
 import { useFetch } from "../../hooks/useFetchGet";
 import { useFetchPost } from "../../hooks/useFetchPost";
 import { SelectFolder } from "./SelectFolder";
 import { SelectAccess } from "./SelectAccess";
+import { useSearchParams } from "react-router-dom";
 
 export const AddForm = ({onSubmit, loading, error, onError}) => {
     const [data, setData] = useState({});
     const [files, setFiles] = useState([]);
     const [imgPreview, setImgPreview] = useState(null);
-    
+
+    const [searchParams] = useSearchParams();
+
+    useEffect(() => {
+        const urlFolder = searchParams.get("folder");
+        const urlDb = searchParams.get("db");
+
+        if ((urlFolder || urlDb) && Object.keys(data).length === 0) {
+            setData({
+                access: urlDb || "",
+                folder: urlFolder || ""
+            });
+        }
+    }, [searchParams, data]);
+
     const handleSubmit = (e) => {
         e.preventDefault();
         const formData = new FormData();
@@ -69,29 +84,20 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
     }
 
     const dbUrl = `${import.meta.env.VITE_API_URL}/getDBs`; 
-    const dbTablesUrl = `${import.meta.env.VITE_API_URL}/getDbTables`;
-
-    const { data: dataDb } = useFetch(dbUrl);
+    const folderUrl = `${import.meta.env.VITE_API_URL}/getFolders`;
+    const { data: dataDb, refetch: refetchDbs } = useFetch(dbUrl);
     
-    const userDbName = dataDb?.name;
-    const generalDbName = dataDb?.general;
-
     const userOptions = useMemo(() => {
-        return userDbName ? { dbName: userDbName } : null;
-    }, [userDbName]);
-
-    const generalOptions = useMemo(() => {
-        return generalDbName ? { dbName: generalDbName } : null;
-    }, [generalDbName]);
-
-    const { data: userData } = useFetchPost(dbTablesUrl, userOptions);
-    const { data: generalData } = useFetchPost(dbTablesUrl, generalOptions);
-
+        return dataDb ? { access: dataDb?.id } : null;
+        }, [dataDb]);
+    const { data: generalData } = useFetchPost(folderUrl, { access: 1 });
+    const { data: userData } = useFetchPost(folderUrl, userOptions);
+    
     const folderData = useMemo(() => {
         if (data?.access === '1') { 
-            return generalData || [];
+            return generalData?.result || [];
         }
-        return userData || []; 
+        return userData?.result || []; 
     }, [data?.access, userData, generalData]);
 
     const getFileCountLabel = (count) => {
@@ -108,9 +114,10 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
         
         return `Wybrano: ${count} plików.`;
     };
-
+    
     return(
         <form onSubmit={handleSubmit} method="post" className="justify-center items-center flex-col flex">
+            naprawic to 
             <FormInput
                 label="Plik"
                 type="file"

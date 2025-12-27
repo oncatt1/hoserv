@@ -2,10 +2,10 @@ import { useMemo, useState } from "react";
 import FormInput from "../common/FormInput";
 import CustomSelect from "../common/CustomSelect";
 import { MdAddAPhoto } from "react-icons/md";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { getSortComparer } from "../../hooks/getSortComparer";
 
-export default function PhotoSelectBar({ finalPhotos, inputValue = '', setInputValue = () => {} }) {
+export default function PhotoSelectBar({ finalPhotos, inputValue = '', setInputValue = () => {}}) {
     const [type, setType] = useState('0');
     const [order, setOrder] = useState('0');
     const [size, setSize] = useState('0');
@@ -18,8 +18,7 @@ export default function PhotoSelectBar({ finalPhotos, inputValue = '', setInputV
         { value: "0", label: "Tytuł" },
         { value: "1", label: "Rozmiar" },
         { value: "2", label: "Data utworzenia" },
-        { value: "3", label: "Data dodania" },
-        { value: "4", label: "Typ" }
+        { value: "3", label: "Typ" }
     ];
     const optionsOrder = [
         { value: "0", label: "Malejąco" },
@@ -34,14 +33,18 @@ export default function PhotoSelectBar({ finalPhotos, inputValue = '', setInputV
             if (!finalPhotos || finalPhotos.length === 0) return [];
     
             const photosCopy = [...finalPhotos];
-            const comparer = getSortComparer(type, order);
+            const comparer = getSortComparer(type, order); //make work
             return photosCopy.sort(comparer);
     
         }, [finalPhotos, type, order]);
+        
+    const [searchParams] = useSearchParams();
+    const folder = searchParams.get("folder") || "";
+    const access = searchParams.get("db") || "";
 
     const barJsx = (
         <div className="h-10 p-8 rounded-lg justify-between items-center 
-            flex bg-slate-700/50">
+            flex bg-slate-700/10">
             <div className="m-2 p-1 flex-5/6">
                 <FormInput
                     type="text" 
@@ -77,7 +80,12 @@ export default function PhotoSelectBar({ finalPhotos, inputValue = '', setInputV
                 />
             </div>
             <div className="m-2 p-1">
-                <Link to="/add"><MdAddAPhoto className="size-8"/></Link>
+                {folder != "" ? (
+                    <Link to={`/add?folder=${folder}&db=${access}`}><MdAddAPhoto className="size-8"/></Link>
+                ) : (
+                    <Link to={`/add`}><MdAddAPhoto className="size-8"/></Link>    
+                )
+                }
             </div>
         </div>
     )
