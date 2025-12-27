@@ -1,27 +1,29 @@
+import { MdPlayCircle } from "react-icons/md";
 import { useFormattedSize } from "../../hooks/calculateSize";
 
 export const PhotoShow = ({ 
-    id, 
     src, 
     alt = '', 
     photo = '', 
     onClick, 
     className = '', 
     detailed = false,
-
-    fileSize,
-    dateAdded 
 }) => {
     const formattedSize = useFormattedSize(photo.size || 0);
     const formattedDate = photo.date.replace("T", " ");
-    let containerClasses = "p-4 m-2 mr-4 shadow-2xl bg-purple-900/20 dark:bg-slate-700/20 rounded-xl";
+    var isVideo, videoBg;
+    if(photo.type.includes('video')) {
+        isVideo = true; 
+        videoBg = "bg-slate-700/10!";
+    }
+    
+    let containerClasses = `p-4 m-2 mr-4 shadow-2xl bg-slate-700/20 rounded-xl ${videoBg}`;
 
     if (detailed) {
         containerClasses += " flex items-center justify-between w-full cursor-pointer";
     } else {
         containerClasses += " flex flex-col items-center cursor-pointer";
     }
-
     return (
         <div
             className={containerClasses}
@@ -48,12 +50,26 @@ export const PhotoShow = ({
 
             ) : (
                 <>
-                   <div className="flex-grow flex items-center justify-center w-full"> 
+                   <div className={`flex-grow flex items-center justify-center w-full ${videoBg}`}> 
+                     {isVideo ? 
+                        <>
+                            <video
+                                src={src} 
+                                alt={alt} 
+                                className={`block ${className} object-contain`}
+                                type="video/mp4"
+                                muted
+                                playsInline
+                            />
+                            <div className="z-50 fixed text-gray-900/80 scale-300"><MdPlayCircle/></div>
+                        </>
+                    :
                         <img 
                             src={src} 
                             alt={alt} 
                             className={`block ${className} object-contain`} 
                         />
+                     }
                     </div>
 
                     <div className="w-full text-center mt-2 px-1 flex-shrink-0"> 

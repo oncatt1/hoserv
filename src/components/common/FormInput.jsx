@@ -10,7 +10,7 @@ export const FormInput = ({
   loading = false, 
   className = "",
   containerClassName = "",
-  labelClassName = "",
+  labelClassName = ""
 }) => {
   const fileRef = useRef(null);
 

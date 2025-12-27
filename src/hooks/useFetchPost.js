@@ -27,7 +27,6 @@ export const useFetchPost = (url, options = null) => {
                     signal: controller.signal
                 });
                 if (!res.ok) throw new Error(`Nie udano zebrac danych ze ${url}`);
-
                 const json = await res.json();
                 setData(json);
 

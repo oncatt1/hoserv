@@ -1,6 +1,7 @@
 import { MdClose, MdDelete, MdInfo } from "react-icons/md";
 import { useFormattedSize } from "../../hooks/calculateSize";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 
 export default function PhotoDetails({ selectedPhoto, closeLightBox}) {
     const photoData = selectedPhoto.activePhoto || {};
@@ -8,43 +9,62 @@ export default function PhotoDetails({ selectedPhoto, closeLightBox}) {
     const formattedDate = photoData.date.replace("T", " ");
 
     const [ showInfo, setShowInfo ] = useState(false);
-    const [ imgSize, setImgSize ] = useState("max-w-8xl");
+    const [ imgSize, setImgSize ] = useState("w-4xl");
     const openInfoBox = () => { 
         setShowInfo(!showInfo);
-        if(!showInfo) setImgSize("max-w-4xl");
-        else setImgSize("max-w-8xl");
+        if(!showInfo) setImgSize("w-4xl");
+        else setImgSize("w-5xl");
     };
     const deletePhoto = () => {
         // add
     }
-
-    return(
+    var isVideo;
+    console.log(photoData)
+    if(photoData.type.includes('video')) isVideo = true; 
+    const content = (
         <div 
-            className=" fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-s, p-4"
+            className=" fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-s p-4"
             onClick={closeLightBox}>
             <div 
-                className="relative max-w-5xl w-full max-h-screen flex flex-col items-center bg-slate-900/40 rounded-2xl pb-3 m-6"
+                className="relative w-5x  flex flex-col items-center bg-slate-900/40 rounded-2xl pb-3 m-6"
                 onClick={(e) => e.stopPropagation()}>
-                <button 
-                    onClick={closeLightBox}
-                    className="absolute top-10 z-80 -right-20 text-white hover:text-red-500 transition-colors">
-                    <MdClose size={40} />
-                </button>
-                <button 
-                    onClick={openInfoBox}
-                    className="absolute top-20 z-80 -right-20 text-white hover:text-blue-400 transition-colors">
-                    <MdInfo size={40} />
-                </button>
-                <button 
-                    onClick={deletePhoto}
-                    className="absolute top-190 z-80 -right-20 text-white hover:text-red-900 transition-colors">
-                    <MdDelete size={40} />
-                </button>
-                <img 
-                    src={selectedPhoto.src} 
-                    alt={selectedPhoto.name} 
-                    className={`relative w-full max-h-[120vh] flex flex-col items-center bg-slate-900/40 rounded-2xl pb-3 ${imgSize}`}/>
                 
+                {isVideo ? 
+            
+                    <video
+                        src={selectedPhoto.src} 
+                        alt={selectedPhoto.name} 
+                        className={`relative w-full max-h-[140vh] flex flex-col items-center bg-slate-900/40 rounded-2xl pb-3 ${imgSize}`}
+                        controls
+                        playsInline
+                        />
+                    :
+                <img 
+                        src={selectedPhoto.src} 
+                        alt={selectedPhoto.name} 
+                        className={`object-contain ${imgSize}`}/>
+            }
+                <div className="flex flex-row w-full max-w-5xl min-w-80 mt-3 px-12 sm:px-16 md:px-20">
+                    <div className="flex-4/6">
+                        <button 
+                            onClick={closeLightBox}
+                            className="text-gray-600 hover:text-gray-700 transition-colors">
+                            <MdClose size={40} /> {/*close photo */}
+                        </button>
+                        <button 
+                            onClick={openInfoBox}
+                            className="text-blue-300 hover:text-blue-400 transition-colors">
+                            <MdInfo size={40} /> {/* info about photo */}
+                        </button>
+                    </div>
+                    <div className="flex-2/6 text-right">
+                        <button 
+                            onClick={deletePhoto}
+                            className="text-red-800 hover:text-red-900 transition-colors">
+                            <MdDelete size={40} /> {/* delete photo */}
+                        </button>
+                    </div>
+                </div>
                 <div 
                     className="flex flex-col w-full max-w-5xl min-w-80 mt-3 px-12 sm:px-16 md:px-20"> 
                         
@@ -70,4 +90,5 @@ export default function PhotoDetails({ selectedPhoto, closeLightBox}) {
             </div>
         </div>
     )
+    return createPortal(content, document.body);
 }

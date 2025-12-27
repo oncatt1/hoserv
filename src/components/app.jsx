@@ -8,9 +8,10 @@ import { GetLoginState, useUserStore } from "../utils/auth";
 import { useEffect, useState } from "react";
 import AddPhoto from "../pages/addphoto";
 import { useNavigate } from 'react-router-dom';
+import AddFolder from "../pages/addFolder";
 
 export default function App(){
-    const { user, fetchUser } = useUserStore();
+    const { fetchUser } = useUserStore();
     const [isLogged, setIsLogged] = useState(null);
     const navigate = useNavigate();
     
@@ -51,6 +52,7 @@ export default function App(){
             <Route path="/login" element={<Login/>} />
             <Route path="/admin" element={<Admin/>} />
             <Route path="/add" element={<AddPhoto/>} />
+            <Route path="/addFolder" element={<AddFolder/>}/>
         </Routes>
     )
 }

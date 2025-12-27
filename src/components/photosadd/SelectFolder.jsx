@@ -1,11 +1,11 @@
 import CustomSelect from "../common/CustomSelect";
 
 export const SelectFolder = ({label, name, value, loading, onChange, className, data }) => {
-  
-    const tables = data?.tableNames || [];
+
+    const tables = data || [];
      const options = tables.map((table) => ({
-        value: table.folder,
-        label: table.folder,
+        value: table.id,
+        label: table.name,
     }));
     return(
         <div className="flex flex-col w-full">

@@ -1,32 +1,31 @@
+import { useMemo } from "react";
 import { useUserStore } from "../../utils/auth";
 import CustomSelect from "../common/CustomSelect";
 
-export const SelectAccess = ({label, name, value, loading, onChange, className, data }) => {
-
+// SelectAccess.jsx
+export const SelectAccess = ({ data, value, ...props }) => {
     const { user } = useUserStore();
-    const {name: dbName, id: id, general} = data || {};
-    const formatedName = dbName?.replace("photos_", "");
-    const formatedNameGeneral = general?.replace("photos_", "");
+    
+    // Ensure we have data before trying to destructure
+    const dbId = data?.id; 
+    const dbName = data?.name?.replace("photos_", "") || "Prywatne";
+    const generalName = data?.general?.replace("photos_", "") || "Publiczne";
 
-    const options = [
+    const options = useMemo(() => [
         ...(user !== import.meta.env.VITE_ADMIN_NAME
-        ? [{ value: id, label: formatedName }]
-        : []),
-        { value: "1", label: formatedNameGeneral },
-    ];
-        
-    return(
+            ? [{ value: String(dbId), label: dbName }] // Force string for URL matching
+            : []),
+        { value: "1", label: generalName },
+    ], [dbId, dbName, generalName, user]);
+
+    return (
         <div className="flex flex-col w-full">
-            <span className="font-semibold text-[17px] pb-1">{label}</span>
+            <span className="font-semibold text-[17px] pb-1">{props.label}</span>
             <CustomSelect 
-                name={name}
-                value={value ?? ""}
-                loading={loading}
-                onChange={onChange}
-                className ={`w-60${className}`}
-                placeholder = "Wybierz dostep"
-                options = {options}
+                {...props}
+                value={value} 
+                options={options}
             />
         </div>
-    )
-}
+    );
+};

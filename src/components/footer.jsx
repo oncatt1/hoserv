@@ -28,6 +28,7 @@ function Footer(){
         border-t border-slate-700/50
         shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.6)]
         max-xl:text-xs
+        
     ">  
         {data && (
             <>

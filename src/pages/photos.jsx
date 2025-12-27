@@ -80,9 +80,8 @@ export default function Photos(){
         setSelectedPhoto(null);
     };
 
-    
     // Now call PhotoSelectBar with the final photos data
-    const { barJsx, sortedPhotos, size } = PhotoSelectBar({ finalPhotos, inputValue, setInputValue });
+    const { barJsx, sortedPhotos, size } = PhotoSelectBar({ finalPhotos, inputValue, setInputValue});
     if (loading) return <Loading />;
     <ErrorPopout error={error} />
 
@@ -125,7 +124,7 @@ export default function Photos(){
             <div className={gridClass}>
                 {sortedPhotos?.map(photo => {
                     const src = `${import.meta.env.VITE_PHOTO_URL}/photos/${photo.user_id}/${photo.folder}/${photo.name}`;
-                    console.log(src);
+                
                     return (
                         <PhotoShow
                         key={photo.id}
