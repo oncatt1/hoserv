@@ -100,6 +100,20 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
         return userData?.result || []; 
     }, [data?.access, userData, generalData]);
 
+    // Handle folder data updates when access changes
+    useEffect(() => {
+        if (data?.access && data?.folder) {
+            // Reset folder if it's not in the current folderData
+            const folderExists = folderData.some(folder => String(folder.id) === String(data.folder));
+            if (!folderExists && folderData.length > 0) {
+                setData(prev => ({
+                    ...prev,
+                    folder: ""
+                }));
+            }
+        }
+    }, [folderData, data?.access]);
+
     const getFileCountLabel = (count) => {
         if (count === 1) {
             return `Wybrano: 1 plik.`;
@@ -132,7 +146,7 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
                 type="text"
                 label="Dostęp"
                 name="access"
-                value={data?.access}
+                value={String(data?.access || "")}
                 loading={loading}
                 onChange={handleChange}
                 className="mb-2 p-2 bg-slate-800"
@@ -143,7 +157,7 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
                     type="text"
                     label="Dostęp"
                     name="folder"
-                    value={data?.folder}
+                    value={String(data?.folder || "")}
                     loading={loading}
                     onChange={handleChange}
                     className="mb-2 p-2 bg-slate-800" 

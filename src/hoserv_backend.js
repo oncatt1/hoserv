@@ -12,8 +12,7 @@ import jwt from 'jsonwebtoken';
 const app = express();
 const PORT = 3000;
 const DISK_SIZE = 900_000_000_000;
-//const BASE_DIR = '/mnt/photos';
-const BASE_DIR = '/home/oncatt1/Desktop/hoserv/hoserv/photos'; // change
+const BASE_DIR = '/home/oncatt1/Desktop/hoserv/hoserv/photos/';
 const JWT_SECRET = 'M0z4n0_rc0o2h@i3t';
 const allowedOrigins = [
   'http://192.168.1.21:5173',
@@ -38,8 +37,15 @@ const corsOptions = {
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
 };
+
 app.use(cors(corsOptions));
-//app.use(helmet()); dow nload it
+
+// app.use(
+//   helmet({
+//     crossOriginResourcePolicy: { policy: "cross-origin" },
+//   })
+// );
+
 app.use(
   '/photos',
   cors(corsOptions),
@@ -63,19 +69,19 @@ app.use('/api', (req, res, next) => {
 app.use(express.json());
 app.use(cookieParser());
 
-// const db = mysql.createConnection({
-//   host: 'localhost',
-//   user: 'admin',
-//   password: 'Wojtek2008',
-//   database: 'hoserv'
-// });
-
 const db = mysql.createConnection({
   host: 'localhost',
-  user: 'root',
-  password: '',
+  user: 'admin',
+  password: 'Wojtek2008',
   database: 'hoserv'
 });
+
+// const db = mysql.createConnection({
+//   host: 'localhost',
+//   user: 'root',
+//   password: '',
+//   database: 'hoserv'
+// });
 
 
 // ======== Configs ========

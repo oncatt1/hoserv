@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+* {
+  scrollbar-color: auto;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
 }

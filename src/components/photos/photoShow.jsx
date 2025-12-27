@@ -50,23 +50,6 @@ export const PhotoShow = ({
 
             ) : (
                 <>
-<<<<<<< HEAD
-                   <div className="flex-grow flex items-center justify-center w-full"> 
-                        {photo.type == "video/mp4" ? (
-                            <video 
-                                src={src} 
-                                alt={alt} 
-                                className={`block ${className} object-contain`} 
-                                controls
-                            />
-                        ) : (
-                            <img 
-                                src={src} 
-                                alt={alt} 
-                                className={`block ${className} object-contain`} 
-                            />
-                        )}
-=======
                    <div className={`flex-grow flex items-center justify-center w-full ${videoBg}`}> 
                      {isVideo ? 
                         <>
@@ -87,7 +70,6 @@ export const PhotoShow = ({
                             className={`block ${className} object-contain`} 
                         />
                      }
->>>>>>> 2fff14d4c0db75e1dbb7e38125fe4a851ca20ac9
                     </div>
 
                     <div className="w-full text-center mt-2 px-1 flex-shrink-0"> 
