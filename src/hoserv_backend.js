@@ -7,7 +7,8 @@ import fs from 'fs-extra';
 import path from 'path';
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
-//import helmet from 'helmet';
+import helmet from 'helmet'; // [SEC] Added for HTTP Security Headers
+import rateLimit from 'express-rate-limit'; // [SEC] Added for Rate Limiting
 
 const app = express();
 const PORT = 3000;
@@ -38,8 +39,26 @@ const corsOptions = {
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
 };
+
+// [SEC] 1. Helmet: Sets various HTTP headers to prevent XSS, clickjacking, etc.
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }, // Allows your images to be loaded by the frontend
+}));
+
 app.use(cors(corsOptions));
-//app.use(helmet()); dow nload it
+
+// [SEC] 2. Rate Limiting: Prevents brute-force and spam
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  message: { error: 'Too many requests, please try again later.' }
+});
+// Apply rate limiting to all requests starting with /api
+app.use('/api', apiLimiter);
+
+
 app.use(
   '/photos',
   cors(corsOptions),
@@ -50,6 +69,8 @@ app.use(
         res.setHeader('Content-Type', type);
       }
       res.setHeader('Content-Disposition', 'inline');
+      // [SEC] Prevent browsers from "sniffing" the mimetype (treats text as html)
+      res.setHeader('X-Content-Type-Options', 'nosniff');
     }
   })
 );
@@ -62,6 +83,14 @@ app.use('/api', (req, res, next) => {
 
 app.use(express.json());
 app.use(cookieParser());
+
+// [SEC] 3. SQL Injection Helper
+// Since you pass table names dynamically (which can't be parameterized like values),
+// we must strictly validate them to ensure they contain NO special characters.
+function isValidTableName(name) {
+  // Only allows alphanumeric characters and underscores. No spaces, semicolons, dashes.
+  return /^[a-zA-Z0-9_]+$/.test(name);
+}
 
 const db = mysql.createConnection({
   host: 'localhost',
@@ -103,13 +132,19 @@ const storage = multer.diskStorage({
     const userId = req.query.user;
     const folderName = req.query.folder;
 
-    const userFolderPath = path.join(BASE_DIR, userId, folderName);
+    // [SEC] Path Traversal Prevention: Ensure folderName doesn't contain '..' or '/'
+    const safeFolderName = path.basename(folderName);
+    const safeUserId = path.basename(userId);
+
+    const userFolderPath = path.join(BASE_DIR, safeUserId, safeFolderName);
     console.log("Creating folder path: " + userFolderPath);
     await fs.ensureDir(userFolderPath);
     cb(null, userFolderPath);
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname);
+    // [SEC] Sanitize filename to prevent weird characters
+    const safeName = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '');
+    cb(null, Date.now() + '-' + safeName);
   }
 });
 const upload = multer({ storage });
@@ -120,6 +155,7 @@ const upload = multer({ storage });
 app.post('/api/login', async (req, res) => {
   try {
     const { login, password } = req.body;
+    // [SEC] This query is already safe (uses prepared statements ?)
     const query = `SELECT id, login FROM users WHERE login = ? AND password = ?`;
     const [results] = await db.promise().query(query, [login, password]);
 
@@ -130,9 +166,9 @@ app.post('/api/login', async (req, res) => {
       res.cookie('token', token, {
         httpOnly: true,
         sameSite: 'lax',
-        secure: false,
+        secure: false, // Set to true if using HTTPS
         path: '/',
-        maxAge: 60 * 60 * 1000 // 1000minutes
+        maxAge: 60 * 60 * 1000 // 1 hour
       });
 
       res.status(200).json({ success: true });
@@ -172,6 +208,12 @@ app.get('/api/user', verifyToken, async (req, res) => {
 app.post('/api/photos', verifyToken, async (req, res) => {
   const folder = req.body.folder || "";
   const dbName = req.body.db || "photos_general";
+
+  // [SEC] SQL Injection Fix: Validate table name before use
+  if (!isValidTableName(dbName)) {
+      return res.status(400).json({ error: "Invalid database name" });
+  }
+
   try{
     // if folder provided, filter by it
     if(folder){
@@ -185,7 +227,7 @@ app.post('/api/photos', verifyToken, async (req, res) => {
     
     // else return all photos
     const [dbRows] = await db.promise().query(
-        `SELECT * FROM ${dbName}`,
+        `SELECT * FROM \`${dbName}\``, // Added backticks for safety
     );
     res.status(200).json(dbRows);
 
@@ -201,6 +243,12 @@ app.post('/api/search', verifyToken, async (req, res) => {
   const dbName = req.body.db || "photos_general";
   const search = req.body.search || "";
   const searchLike = '%' + search + '%';
+
+  // [SEC] SQL Injection Fix: Validate table name
+  if (!isValidTableName(dbName)) {
+      return res.status(400).json({ error: "Invalid database name" });
+  }
+
   try{
     // if folder provided, filter by it
     if(folder){
@@ -238,15 +286,27 @@ app.post('/api/addPhoto', verifyToken, upload.array('files'), async (req, res) =
     }
 
     try {
-        const { folder, access: userId } = req.body;
+        const { folder, access } = req.body;
+        // [SEC] Ensure userId is an Integer to prevent logic errors
+        const userId = parseInt(access, 10);
         const files = req.files;
         
         // 2. Get the target database name
         const [dbRows] = await db.promise().query(
             'SELECT name FROM `db_photos`',
         );
+
+        // [SEC] Check if userId points to a valid row
+        if (!dbRows[userId - 1]) {
+           return res.status(400).json({ error: "Invalid access ID" });
+        }
         const dbName = dbRows[userId - 1].name;
         
+        // [SEC] Validate retrieved dbName just in case
+        if (!isValidTableName(dbName)) {
+             throw new Error("Retrieved invalid DB name from database settings");
+        }
+
         // Prepare the common INSERT query structure
         const query = `INSERT INTO \`${dbName}\` (\`name\`, \`date\`, \`user_id\`, \`folder\`, \`size\`, \`type\`) VALUES (?, ?, ?, ?, ?, ?)`;
         
@@ -278,6 +338,7 @@ app.post('/api/addFolder', verifyToken, async (req, res) => {
 
     const folder = req.body.folder;
     const id = req.body.id;
+    // [SEC] These queries are safe (Parameterized)
     const queryCheck = `SELECT * FROM db_folders WHERE name = ? AND userId = ?`
     const query = `INSERT INTO db_folders (\`name\`, \`userId\`) VALUES (?, ?)`;
     
@@ -313,6 +374,9 @@ app.get('/api/getUsage', verifyToken, async (req, res) => {
       [userDbId]
     );
 
+    // [SEC] Validate table name from DB
+    if(!isValidTableName(userDb.name)) throw new Error("Invalid DB structure");
+
     // Calculate user usage
     const [[userUsageRows]] = await db.promise().query(
       `SELECT SUM(size) AS totalSize FROM \`${userDb.name}\``
@@ -322,9 +386,11 @@ app.get('/api/getUsage', verifyToken, async (req, res) => {
     // Calculate total usage
     const [allTableRows] = await db.promise().query('SELECT name FROM db_photos');
     const results = await Promise.all(
-      allTableRows.map(row =>
-        db.promise().query(`SELECT SUM(size) AS totalSize FROM \`${row.name}\``)
-      )
+      allTableRows.map(row => {
+          // [SEC] Validation loop
+          if(!isValidTableName(row.name)) return Promise.resolve([[{totalSize:0}]]);
+          return db.promise().query(`SELECT SUM(size) AS totalSize FROM \`${row.name}\``)
+      })
     );
 
     const totalUsage = results.reduce((acc, [[r]]) => acc + Number(r.totalSize || 0), 0);
@@ -382,7 +448,6 @@ app.get('/api/getPhotoCount', verifyToken, async (req, res) => {
     try {
         const userLogin = req.user.login;
 
-        // Get DB id for user
         const [userRows] = await db.promise().query(
             'SELECT db_main FROM users WHERE login = ?',
             [userLogin]
@@ -390,11 +455,12 @@ app.get('/api/getPhotoCount', verifyToken, async (req, res) => {
         if (!userRows.length) return res.status(404).json({ error: 'User not found' });
         const userDbId = userRows[0].db_main;
 
-        // Get user db name
         const [[userDb]] = await db.promise().query(
           'SELECT name FROM db_photos WHERE id = ?',
           [userDbId]
         );
+
+        if(!isValidTableName(userDb.name)) throw new Error("Invalid Table");
 
         // Count user photos
         const [[userPhotos]] = await db.promise().query(
@@ -413,6 +479,8 @@ app.get('/api/getPhotoCount', verifyToken, async (req, res) => {
         let totalUsage = 0;
         for (const row of allTables) {
             const table = row.name;
+            if(!isValidTableName(table)) continue; // [SEC] Skip invalid tables
+
             const [[result]] = await db.promise().query(`SELECT COUNT(*) as count FROM \`${table}\``);
 
             totalUsage += result?.count ?? 0;
@@ -435,8 +503,14 @@ app.get('/api/getPhotoCount', verifyToken, async (req, res) => {
 app.post('/api/getDbTables', verifyToken, async (req, res) => { //rework
   try{
     const dbName = req.body.dbName;
+
+    // [SEC] SQL Injection Fix: CRITICAL
+    // User controls dbName, which is put directly into the query.
+    if (!isValidTableName(dbName)) {
+        return res.status(400).json({ error: "Invalid database name" });
+    }
     
-    const sql = `SELECT DISTINCT folder FROM \`${dbName}\``; // needs rework for adding folders
+    const sql = `SELECT DISTINCT folder FROM \`${dbName}\``; 
     const [tableNames] = await db.promise().query(sql);
 
     res.status(200).json({
@@ -455,7 +529,7 @@ app.post('/api/getFolders', verifyToken, async (req, res) => {
     const access = req.body.access;
 
     const query = `SELECT id, name FROM db_folders WHERE userId = ?`;
-    const [result] = await db.promise().query(query, access);
+    const [result] = await db.promise().query(query, [access]); // [SEC] Fixed missing array brackets around params
     res.status(200).json({
       result: result
     });
@@ -465,6 +539,7 @@ app.post('/api/getFolders', verifyToken, async (req, res) => {
     res.status(500).json({ error: `Server error ${err}`});
   }
 });
+
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`HTTP Server running on port ${PORT}`);

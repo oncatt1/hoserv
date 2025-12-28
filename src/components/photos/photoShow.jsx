@@ -61,7 +61,7 @@ export const PhotoShow = ({
                                 muted
                                 playsInline
                             />
-                            <div className="z-50 fixed text-gray-900/80 scale-300"><MdPlayCircle/></div>
+                            <div className="z-30 fixed text-gray-900/80 scale-300"><MdPlayCircle/></div>
                         </>
                     :
                         <img 

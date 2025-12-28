@@ -137,7 +137,7 @@ export default function Photos(){
     
     return(
         <div className="m-5 opacity-0 animate-fadeIn">
-            <div className="sticky bg-slate-800 p-2 rounded-2xl top-5">
+            <div className="sticky bg-slate-800 p-2 rounded-2xl top-5 z-50">
                 { barJsx }
                 {gridDetailed && <PhotoDetailsHeader />}
             </div>
