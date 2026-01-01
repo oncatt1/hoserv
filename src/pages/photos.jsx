@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PhotoShow } from "../components/photos/photoShow";
 import PhotoDetails from "../components/photos/photoDetails";
@@ -70,7 +70,7 @@ export default function Photos(){
     }
     
     const finalPhotos = photos || [];
-            
+
     const onPhotoClick = (src, name) => {
         const activePhoto = finalPhotos.find(p => p.name === name);
         setSelectedPhoto({ src, name, activePhoto});
@@ -100,7 +100,27 @@ export default function Photos(){
         }
     };
 
-    // Now call PhotoSelectBar with the final photos data
+    useEffect(() => {
+        const handleKeyDown = (event) => {
+            if (event.key === "Escape") {
+                closeLightBox();
+            }
+            if (event.key === "ArrowLeft") {
+                onPrevPhoto();
+            }
+            if (event.key === "ArrowRight") {
+                onNextPhoto();
+            }
+        };
+
+        document.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            document.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [closeLightBox, onPrevPhoto, onNextPhoto]);
+
+
     const { barJsx, sortedPhotos, size } = PhotoSelectBar({ finalPhotos, inputValue, setInputValue});
     if (loading) return <Loading />;
     <ErrorPopout error={error} />
@@ -163,6 +183,7 @@ export default function Photos(){
                     closeLightBox={closeLightBox}
                     onNextPhoto={onNextPhoto}
                     onPrevPhoto={onPrevPhoto}
+                    currentDb={currentDb}
                 />)}
         </div>
     )

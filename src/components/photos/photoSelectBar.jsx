@@ -33,7 +33,7 @@ export default function PhotoSelectBar({ finalPhotos, inputValue = '', setInputV
             if (!finalPhotos || finalPhotos.length === 0) return [];
     
             const photosCopy = [...finalPhotos];
-            const comparer = getSortComparer(type, order); //make work
+            const comparer = getSortComparer(type, order); 
             return photosCopy.sort(comparer);
     
         }, [finalPhotos, type, order]);
@@ -43,9 +43,8 @@ export default function PhotoSelectBar({ finalPhotos, inputValue = '', setInputV
     const access = searchParams.get("db") || "";
 
     const barJsx = (
-        <div className="h-10 p-8 rounded-lg justify-between items-center 
-            flex bg-slate-700/10">
-            <div className="m-2 p-1 flex-5/6">
+        <div className="flex flex-row justify-between h-10 p-8 rounded-lg items-center bg-slate-700/10">
+            <div className="m-2 p-1 flex-3/6">
                 <FormInput
                     type="text" 
                     name="search" 

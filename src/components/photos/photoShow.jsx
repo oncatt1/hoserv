@@ -14,7 +14,7 @@ export const PhotoShow = ({
     var isVideo, videoBg;
     if(photo.type.includes('video')) {
         isVideo = true; 
-        videoBg = "bg-slate-700/10!";
+        videoBg = "!bg-slate-700/10";
     }
     
     let containerClasses = `p-4 m-2 mr-4 shadow-2xl bg-slate-700/20 rounded-xl ${videoBg}`;
@@ -33,16 +33,16 @@ export const PhotoShow = ({
             {detailed ? (
                 <>
                     <div className="flex-grow flex justify-between items-center min-w-0">
-                        <span className="font-semibold text-[17px] truncate pr-4 flex-15/24 mr-5">
+                        <span className="font-semibold text-[17px] truncate block pr-4 flex-[62.5%] mr-5">
                             {photo.name}
                         </span>
-                        <span className="text-sm text-gray-400 flex-shrink-0 flex-3/24 mr-">
+                        <span className="text-sm text-gray-400 flex-shrink-0 flex-[12.5%] mr-">
                             {formattedDate || 'N/A'}
                         </span>
-                        <span className="text-sm text-gray-400 ml-4 flex-shrink-0 flex-3/24 mr-5">
+                        <span className="text-sm text-gray-400 ml-4 flex-shrink-0 flex-[12.5%] mr-5">
                             {photo.type || 'N/A'}
                         </span>
-                        <span className="text-sm text-gray-400 ml-4 flex-shrink-0 flex-3/24 mr-5">
+                        <span className="text-sm text-gray-400 ml-4 flex-shrink-0 flex-[12.5%] mr-5">
                             {formattedSize || 'N/A'}
                         </span>
                     </div>
@@ -61,7 +61,7 @@ export const PhotoShow = ({
                                 muted
                                 playsInline
                             />
-                            <div className="z-30 fixed text-gray-900/80 scale-300"><MdPlayCircle/></div>
+                            <div className="z-30 fixed text-gray-900/80 scale-[3]"><MdPlayCircle/></div>
                         </>
                     :
                         <img 
@@ -72,7 +72,7 @@ export const PhotoShow = ({
                      }
                     </div>
 
-                    <div className="w-full text-center mt-2 px-1 flex-shrink-0"> 
+                    <div className="w-full min-w-0 text-center mt-2 px-1 flex-shrink-0"> 
                         <span className="font-semibold text-[17px] truncate block">
                             {photo.name}
                         </span>

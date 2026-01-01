@@ -26,7 +26,7 @@ export const AddForm = ({onSubmit, loading, error, onError}) => {
             // Convert db name to access id
             let accessId = "";
             if (urlDb) {
-                if (urlDb === "general") {
+                if (urlDb === "general" || urlDb === "photos_general") {
                     accessId = "1";
                 } else {
                     // Check if it matches user's db
