@@ -21,7 +21,10 @@ export const useFetchPost = (url, options = null) => {
             try {
                 const res = await fetch(url, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': localStorage.getItem('csrfToken')
+                    },
                     credentials: 'include',
                     body: JSON.stringify(options),
                     signal: controller.signal

@@ -7,16 +7,22 @@ import fs from 'fs-extra';
 import path from 'path';
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
-import helmet from 'helmet'; // [SEC] Added for HTTP Security Headers
-import rateLimit from 'express-rate-limit'; // [SEC] Added for Rate Limiting
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
+
 
 const app = express();
 const PORT = 3000;
 const DISK_SIZE = 900_000_000_000;
-//const BASE_DIR = '/mnt/photos';
-const BASE_DIR = '/home/oncatt1/Desktop/hoserv/photos'; // change
-const JWT_SECRET = 'M0z4n0_rc0o2h@i3t';
+const BASE_DIR = '/home/oncatt1/Desktop/hoserv/photos';
+const LOG_DIR = '/home/oncatt1/Desktop/hoserv/logs';
+
+const JWT_SECRET = 'M0z4n0_rc0o2h@i3t'; 
+const CSRF_SECRET = crypto.randomBytes(32).toString('hex'); 
+
+
 const allowedOrigins = [
   'http://192.168.1.21:5173',
   'http://192.168.1.10',
@@ -26,9 +32,13 @@ const allowedOrigins = [
 ];
 
 const normalizedAllowed = allowedOrigins.map(o => o.replace(/\/+$/, '').toLowerCase());
+
 function originAllowed(origin) {
   if (!origin) return false;
-  return normalizedAllowed.includes(origin.toLowerCase());
+  const allowed = normalizedAllowed.includes(origin.toLowerCase());
+  // Log only if denied to reduce noise, or use debug level
+  if (!allowed) logger.warn("Origin check failed", { origin });
+  return allowed;
 }
 
 const corsOptions = {
@@ -36,33 +46,38 @@ const corsOptions = {
     if (!origin || originAllowed(origin)) {
       return callback(null, true);
     }
-    console.log("Blocked by CORS. Origin was:", origin);
+    logger.warn("CORS Blocked Connection", { origin });
     return callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With', 'Accept'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With', 'Accept', 'X-CSRF-Token'],
   optionsSuccessStatus: 200
 };
 
-// [SEC] 1. Helmet: Sets various HTTP headers to prevent XSS, clickjacking, etc.
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }, // Allows your images to be loaded by the frontend
+  crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 
 app.use(cors(corsOptions));
 
-// [SEC] 2. Rate Limiting: Prevents brute-force and spam
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // Limit each IP to 100 requests per windowMs
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  message: { error: 'Too many requests, please try again later.' }
+// [LOG] HTTP Request Logging Middleware
+app.use((req, res, next) => {
+  logger.info(`Incoming Request: ${req.method} ${req.url}`, { ip: req.ip, userAgent: req.get('User-Agent') });
+  next();
 });
-// Apply rate limiting to all requests starting with /api
-app.use('/api', apiLimiter);
 
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    logger.warn("Rate Limit Exceeded", { ip: req.ip });
+    res.status(429).json({ error: 'Too many requests, please try again later.' });
+  }
+});
+app.use('/api', apiLimiter);
 
 app.use(
   '/photos',
@@ -74,7 +89,6 @@ app.use(
         res.setHeader('Content-Type', type);
       }
       res.setHeader('Content-Disposition', 'inline');
-      // [SEC] Prevent browsers from "sniffing" the mimetype (treats text as html)
       res.setHeader('X-Content-Type-Options', 'nosniff');
     }
   })
@@ -83,18 +97,135 @@ app.use(
 app.use('/api', (req, res, next) => {
   const origin = req.headers.origin;
   if (!origin || originAllowed(origin)) return next();
+  
+  logger.warn("Manual API Origin Block", { origin });
   return res.status(403).json({ error: 'CORS origin not allowed' });
 });
 
 app.use(express.json());
 app.use(cookieParser());
 
-// [SEC] 3. SQL Injection Helper
-// Since you pass table names dynamically (which can't be parameterized like values),
-// we must strictly validate them to ensure they contain NO special characters.
+fs.ensureDirSync(LOG_DIR);
+// ==========================================
+// [LOG] Logger Utility
+// ==========================================
+const logger = {
+  // Helper to get current timestamp
+  getTime: () => new Date().toISOString().replace('T', ' ').substring(0, 19),
+
+  // Helper to get today's filename (e.g., server-2024-02-20.log)
+  getLogFileName: () => {
+    const dateStr = new Date().toISOString().split('T')[0];
+    return path.join(LOG_DIR, `server-${dateStr}.log`);
+  },
+
+  // Internal function to write to file and console
+  write: (level, msg, meta = {}) => {
+    const timestamp = logger.getTime();
+    const metaStr = Object.keys(meta).length ? JSON.stringify(meta) : '';
+    
+    // 1. Format for Console (colored usually, but kept simple here)
+    const consoleLine = `[${timestamp}] [${level}] ${msg} ${metaStr}`;
+    
+    // 2. Format for File (Clean text)
+    const fileLine = `${consoleLine}\n`;
+
+    // Write to Console
+    if (level === 'ERROR') console.error(consoleLine);
+    else if (level === 'WARN') console.warn(consoleLine);
+    else console.log(consoleLine);
+
+    // Write to File (Append mode)
+    fs.appendFile(logger.getLogFileName(), fileLine, (err) => {
+      if (err) console.error("CRITICAL: Failed to write to log file", err);
+    });
+  },
+  
+  info: (msg, meta) => logger.write('INFO', msg, meta),
+  warn: (msg, meta) => logger.write('WARN', msg, meta),
+  error: (msg, error) => {
+    const errMeta = error instanceof Error ? { message: error.message, stack: error.stack } : error;
+    logger.write('ERROR', msg, errMeta);
+  }
+};
+
+logger.info("System initializing...", { PORT, BASE_DIR });
+// ======== Security Helper Functions ========
+
 function isValidTableName(name) {
-  // Only allows alphanumeric characters and underscores. No spaces, semicolons, dashes.
-  return /^[a-zA-Z0-9_]+$/.test(name);
+  const isValid = /^[a-zA-Z0-9_]+$/.test(name);
+  if (!isValid) logger.warn("Invalid table name detected", { name });
+  return isValid;
+}
+
+function parseStrictInteger(value, fieldName = 'value') {
+  if (typeof value !== 'number' && typeof value !== 'string') {
+    logger.error(`Integer parsing failed: Invalid type for ${fieldName}`, { type: typeof value });
+    throw new Error(`${fieldName} must be a number or numeric string`);
+  }
+  
+  const str = String(value).trim();
+  if (!/^-?\d+$/.test(str)) {
+    logger.error(`Integer parsing failed: Invalid format for ${fieldName}`, { value: str });
+    throw new Error(`${fieldName} must be a valid integer`);
+  }
+  
+  const parsed = parseInt(str, 10);
+  if (String(parsed) !== str) {
+     logger.error(`Integer parsing failed: Precision loss for ${fieldName}`, { value: str });
+    throw new Error(`${fieldName} contains invalid integer format`);
+  }
+  
+  if (!Number.isSafeInteger(parsed)) {
+    logger.error(`Integer parsing failed: Unsafe integer for ${fieldName}`, { value: parsed });
+    throw new Error(`${fieldName} is outside safe integer range`);
+  }
+  
+  return parsed;
+}
+
+function generateCsrfToken(sessionId) {
+  const hmac = crypto.createHmac('sha256', CSRF_SECRET);
+  hmac.update(sessionId);
+  return hmac.digest('hex');
+}
+
+function validateCsrfToken(token, sessionId) {
+  if (!token || !sessionId) {
+    logger.warn("CSRF Validation missing token or session", { hasToken: !!token, hasSession: !!sessionId });
+    return false;
+  }
+  const expectedToken = generateCsrfToken(sessionId);
+  
+  if (token.length !== expectedToken.length) return false;
+  
+  try {
+    return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expectedToken));
+  } catch (err) {
+    logger.error('CSRF token validation error', err);
+    return false;
+  }
+}
+
+function csrfProtection(req, res, next) {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    return next();
+  }
+  
+  if (!req.user || !req.user.id) {
+    logger.warn("CSRF check failed: User not authenticated");
+    return res.status(419).json({ error: 'Authentication required' });
+  }
+  
+  const csrfToken = req.headers['x-csrf-token'];
+  const sessionId = String(req.user.id);
+  
+  if (!validateCsrfToken(csrfToken, sessionId)) {
+    logger.warn(`CSRF validation failed`, { user: req.user.login });
+    return res.status(403).json({ error: 'Invalid CSRF token' });
+  }
+  
+  next();
 }
 
 const db = mysql.createConnection({
@@ -104,27 +235,25 @@ const db = mysql.createConnection({
   database: 'hoserv'
 });
 
-// const db = mysql.createConnection({
-//   host: 'localhost',
-//   user: 'root',
-//   password: '',
-//   database: 'hoserv'
-// });
+db.connect((err) => {
+    if (err) logger.error("Database connection failed", err);
+    else logger.info("Database connected successfully");
+});
 
+// ======== Middleware ========
 
-// ======== Configs ========
-
-// Middleware: JWT checks
 function verifyToken(req, res, next) {
   const token = req.cookies.token;
   if (!token) {
+    logger.warn("VerifyToken: No token provided", { ip: req.ip });
     return res.sendStatus(401);
   }
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
     next();
-  } catch {
+  } catch (err) {
+    logger.warn("VerifyToken: Invalid token", { ip: req.ip, error: err.message });
     return res.sendStatus(403);
   }
 }
@@ -135,41 +264,55 @@ const storage = multer.diskStorage({
     const userId = req.query.user || req.body.access;
     const folderName = req.query.folder || req.body.folder;
     
-    if (!userId) return cb(new Error('Missing user/access parameter'));
+    logger.info("Multer destination start", { userId, folderName, file: file.originalname });
+
+    if (!userId) {
+        logger.error("Multer: Missing user/access parameter");
+        return cb(new Error('Missing user/access parameter'));
+    }
     
-    // [SEC] Authorization: Verify user has access to this DB ID
-    if (!req.user) return cb(new Error('Unauthorized'));
+    if (!req.user) {
+        logger.error("Multer: Unauthorized (no req.user)");
+        return cb(new Error('Unauthorized'));
+    }
+
     try {
       const [uRows] = await db.promise().query('SELECT db_main FROM users WHERE login = ?', [req.user.login]);
-      if (!uRows.length) return cb(new Error('User not found'));
+      if (!uRows.length) {
+          logger.error("Multer: User not found in DB", { login: req.user.login });
+          return cb(new Error('User not found'));
+      }
       
       const allowedDbId = uRows[0].db_main;
-      const targetDbId = parseInt(userId, 10);
+      const targetDbId = parseStrictInteger(userId, 'userId');
       
       if (targetDbId !== allowedDbId && targetDbId !== 1) {
+        logger.warn("Multer: Unauthorized upload destination attempt", { user: req.user.login, target: targetDbId });
         return cb(new Error('Unauthorized upload destination'));
       }
-    } catch (err) { return cb(err); }
+    } catch (err) { 
+        logger.error("Multer: DB Error", err);
+        return cb(err); 
+    }
 
-    // [SEC] Path Traversal Prevention: Allow nested folders but prevent escaping user root
     const safeUserId = path.basename(String(userId));
-    const safeFolderName = (folderName || '').replace(/^\/+/g, ''); // Remove leading slashes
+    const safeFolderName = (folderName || '').replace(/^\/+/g, '');
 
     const userRoot = path.resolve(BASE_DIR, safeUserId);
     const userFolderPath = path.resolve(userRoot, safeFolderName);
 
     if (!userFolderPath.startsWith(userRoot)) {
-      console.log("Blocked path traversal attempt: " + folderName);
+      logger.warn("Multer: Path traversal attempt", { folderName });
       return cb(new Error('Invalid folder path'));
     }
 
-    console.log("Creating folder path: " + userFolderPath);
+    logger.info("Creating folder path", { path: userFolderPath });
     await fs.ensureDir(userFolderPath);
     cb(null, userFolderPath);
   },
   filename: (req, file, cb) => {
-    // [SEC] Sanitize filename to prevent weird characters
     const safeName = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '');
+    logger.info("Multer: File sanitized", { original: file.originalname, safe: safeName });
     cb(null, Date.now() + '-' + safeName);
   }
 });
@@ -179,9 +322,11 @@ const upload = multer({ storage });
 
 // POST: Login
 app.post('/api/login', async (req, res) => {
+  const { login } = req.body; // Don't destructure password for logging
+  logger.info("Login attempt", { login });
+
   try {
-    const { login, password } = req.body;
-    // [SEC] This query is already safe (uses prepared statements ?)
+    const { password } = req.body;
     const query = `SELECT id, login, password FROM users WHERE login = ?`;
     const [results] = await db.promise().query(query, [login]);
 
@@ -190,73 +335,98 @@ app.post('/api/login', async (req, res) => {
       const match = await bcrypt.compare(password, user.password);
 
       if (match) {
+        logger.info("Login successful", { login });
         const token = jwt.sign({ id: user.id, login: user.login }, JWT_SECRET, { expiresIn: '1h' });
-      res.cookie('token', token, {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: false, // Set to true if using HTTPS
-        path: '/',
-        maxAge: 60 * 60 * 1000 // 1 hour
-      });
+        
+        const csrfToken = generateCsrfToken(String(user.id));
+        
+        res.cookie('token', token, {
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: false,
+          path: '/',
+          maxAge: 60 * 60 * 1000
+        });
 
-      res.status(200).json({ success: true });
+        res.status(200).json({ 
+          success: true,
+          csrfToken 
+        });
       } else {
+        logger.warn("Login failed: Incorrect password", { login });
         res.status(401).json({ success: false, message: 'Nieprawidłowe dane logowania' });
       }
-    } else res.status(401).json({ success: false, message: 'Nieprawidłowe dane logowania' });
+    } else {
+        logger.warn("Login failed: User not found", { login });
+        res.status(401).json({ success: false, message: 'Nieprawidłowe dane logowania' });
+    }
 
   } catch (err) {
+    logger.error("Login Server Error", err);
     res.status(500).json({ error: `Server error ${err}` });
   }
-
 });
 
 // GET: Return if logged in
 app.get('/api/isLogged', (req, res) => {
-  if (!req.cookies.token) res.status(200).json({ isLogged: false })
+  const hasToken = !!req.cookies.token;
+  // logger.info("Check isLogged", { hasToken }); // Optional: might be too noisy
+  if (!hasToken) res.status(200).json({ isLogged: false })
   else res.status(200).json({ isLogged: true })
-})
+});
 
 // GET: About logged user
 app.get('/api/me', verifyToken, (req, res) => {
-  res.json({ user: req.user });
+  logger.info("Fetching /api/me", { user: req.user.login });
+  const csrfToken = generateCsrfToken(String(req.user.id));
+  res.json({ 
+    user: req.user,
+    csrfToken
+  });
 });
 
 // GET: More about logged user
 app.get('/api/user', verifyToken, async (req, res) => {
-  const [result] = await db.promise().query(
-    `SELECT login, db_main FROM users WHERE login = ?`,
-    req.user
-  );
+  logger.info("Fetching /api/user details", { user: req.user.login });
+  try {
+      const [result] = await db.promise().query(
+        `SELECT login, db_main FROM users WHERE login = ?`,
+        [req.user.login]
+      );
 
-  res.status(200).json({
-    user: result.login,
-    dbId: result.db_main
-  });
+      res.status(200).json({
+        user: result[0].login,
+        dbId: result[0].db_main
+      });
+  } catch (err) {
+      logger.error("Error fetching /api/user", err);
+      res.status(500).json({ error: "DB Error" });
+  }
 });
 
 // POST: All photos
-app.post('/api/photos', verifyToken, async (req, res) => {
+app.post('/api/photos', verifyToken, csrfProtection, async (req, res) => {
   const folder = req.body.folder || "";
   const dbName = req.body.db || "photos_general";
 
-  // [SEC] SQL Injection Fix: Validate table name before use
+  logger.info("Fetching photos", { user: req.user.login, db: dbName, folder });
+
   if (!isValidTableName(dbName)) {
+    logger.warn("Invalid table name requested", { dbName });
     return res.status(400).json({ error: "Invalid database name" });
   }
 
   try {
-    // [SEC] Authorization Check
     const [uRows] = await db.promise().query('SELECT db_main FROM users WHERE login = ?', [req.user.login]);
     if (!uRows.length) return res.status(403).json({ error: "User not found" });
     const userDbId = uRows[0].db_main;
     const [dRows] = await db.promise().query('SELECT name FROM db_photos WHERE id = ?', [userDbId]);
     
     if (dbName !== dRows[0]?.name && dbName !== 'photos_general') {
+      logger.warn("Unauthorized DB access attempt", { user: req.user.login, targetDb: dbName });
       return res.status(403).json({ error: "Unauthorized access to this database" });
     }
 
-    // if folder provided, filter by it
     if (folder) {
       const [dbRows] = await db.promise().query(
         `SELECT * FROM \`${dbName}\` WHERE folder = ?`,
@@ -266,32 +436,29 @@ app.post('/api/photos', verifyToken, async (req, res) => {
       return;
     }
 
-    // else return all photos
-    const [dbRows] = await db.promise().query(
-      `SELECT * FROM \`${dbName}\``, // Added backticks for safety
-    );
+    const [dbRows] = await db.promise().query(`SELECT * FROM \`${dbName}\``);
     res.status(200).json(dbRows);
 
   } catch (err) {
-    console.error("SQL INSERT ERROR:", err.sqlMessage ?? err.message);
+    logger.error("Photos Fetch Error", err);
     res.status(500).json({ error: `Upload failed: ${err.sqlMessage ?? err.message}` });
   }
 });
 
 // POST: Search for photos
-app.post('/api/search', verifyToken, async (req, res) => {
+app.post('/api/search', verifyToken, csrfProtection, async (req, res) => {
   const folder = req.body.folder || "";
   const dbName = req.body.db || "photos_general";
   const search = req.body.search || "";
   const searchLike = '%' + search + '%';
 
-  // [SEC] SQL Injection Fix: Validate table name
+  logger.info("Search request", { user: req.user.login, query: search, folder });
+
   if (!isValidTableName(dbName)) {
     return res.status(400).json({ error: "Invalid database name" });
   }
 
   try {
-    // [SEC] Authorization Check
     const [uRows] = await db.promise().query('SELECT db_main FROM users WHERE login = ?', [req.user.login]);
     if (!uRows.length) return res.status(403).json({ error: "User not found" });
     const userDbId = uRows[0].db_main;
@@ -301,7 +468,6 @@ app.post('/api/search', verifyToken, async (req, res) => {
       return res.status(403).json({ error: "Unauthorized access to this database" });
     }
 
-    // if folder provided, filter by it
     if (folder) {
       const [dbRows] = await db.promise().query(
         `SELECT * FROM \`${dbName}\` WHERE folder = ? and name LIKE ?`,
@@ -311,7 +477,6 @@ app.post('/api/search', verifyToken, async (req, res) => {
       return;
     }
 
-    // else return all photos
     const [dbRows] = await db.promise().query(
       `SELECT * FROM \`${dbName}\` WHERE name LIKE ?`,
       [searchLike]
@@ -319,41 +484,43 @@ app.post('/api/search', verifyToken, async (req, res) => {
     res.status(200).json(dbRows);
 
   } catch (err) {
-    console.error("SQL INSERT ERROR:", err.sqlMessage ?? err.message);
+    logger.error("Search Error", err);
     res.status(500).json({ error: `Upload failed: ${err.sqlMessage ?? err.message}` });
   }
 });
 
 // POST: Log out
-app.post('/api/logout', verifyToken, (req, res) => {
+app.post('/api/logout', verifyToken, csrfProtection, (req, res) => {
+  logger.info("User logout", { user: req.user.login });
   res.clearCookie('token');
   res.status(200).json({ success: true });
 });
 
 // POST: Upload photo
-app.post('/api/addPhoto', verifyToken, upload.array('files'), async (req, res) => {
+app.post('/api/addPhoto', verifyToken, csrfProtection, upload.array('files'), async (req, res) => {
   const access = req.body.access || req.query.user;
   const folder = req.body.folder || req.query.folder || "";
 
+  logger.info("AddPhoto request processing", { user: req.user.login, folder, access });
+
   if (!access || !req.files || req.files.length === 0) {
+    logger.warn("AddPhoto: Missing parameters or files");
     return res.status(400).json({ success: false, message: 'Proszę podać folder, dostęp lub zdjęcie/wideo.' });
   }
 
   try {
-    // [SEC] Ensure userId is an Integer to prevent logic errors
-    const userId = parseInt(access, 10);
+    const userId = parseStrictInteger(access, 'access');
     const files = req.files;
 
-    // [SEC] Authorization Check
     const [uRows] = await db.promise().query('SELECT db_main FROM users WHERE login = ?', [req.user.login]);
     if (!uRows.length) return res.status(403).json({ error: "User not found" });
     const userDbId = uRows[0].db_main;
     
     if (userId !== userDbId && userId !== 1) {
+      logger.warn("AddPhoto: Unauthorized DB write attempt", { user: req.user.login, targetId: userId });
       return res.status(403).json({ error: "Unauthorized access to this database" });
     }
 
-    // 2. Get the target database name
     const [dbRows] = await db.promise().query(
       'SELECT name FROM `db_photos` WHERE id = ?',
       [userId]
@@ -362,44 +529,67 @@ app.post('/api/addPhoto', verifyToken, upload.array('files'), async (req, res) =
     if (dbRows.length === 0) return res.status(400).json({ error: "Invalid access ID" });
     const dbName = dbRows[0].name;
 
-    // [SEC] Validate retrieved dbName just in case
     if (!isValidTableName(dbName)) {
       throw new Error("Retrieved invalid DB name from database settings");
     }
 
-    // Prepare the common INSERT query structure
     const query = `INSERT INTO \`${dbName}\` (\`name\`, \`date\`, \`user_id\`, \`folder\`, \`size\`, \`type\`) VALUES (?, ?, ?, ?, ?, ?)`;
 
     const insertionPromises = files.map(file => {
       const name = file.filename;
       const size = file.size;
       const type = file.mimetype;
-      const dateObj = req.body.lastModified ? new Date(req.body.lastModified) : new Date();
-      const dateStr = dateObj.toISOString().slice(0, 19).replace('T', ' ');
+      
+      // === POPRAWKA DATY ===
+      let dateObj = new Date(); // Domyślnie czas "teraz"
+      const incomingDate = req.body.lastModified;
 
-      // 3. Execute query for each file
+      if (incomingDate) {
+        // Sprawdź czy to timestamp (same cyfry), wtedy zamień na liczbę
+        const timestamp = Number(incomingDate);
+        if (!isNaN(timestamp)) {
+           dateObj = new Date(timestamp);
+        } else {
+           // Spróbuj stworzyć datę z tekstu
+           const tryDate = new Date(incomingDate);
+           // Sprawdź czy data jest poprawna (czy nie jest "Invalid Date")
+           if (!isNaN(tryDate.getTime())) {
+             dateObj = tryDate;
+           }
+        }
+      }
+      
+      // Ostateczne zabezpieczenie - jeśli data nadal jest błędna, użyj "teraz"
+      if (isNaN(dateObj.getTime())) {
+        logger.warn("Received invalid date, falling back to current time", { invalidValue: incomingDate });
+        dateObj = new Date();
+      }
+
+      const dateStr = dateObj.toISOString().slice(0, 19).replace('T', ' ');
+      // =====================
+
       return db.promise().query(query, [name, dateStr, userId, folder, size, type]);
     });
 
-    // Wait for all database inserts to complete
     await Promise.all(insertionPromises);
-
+    
+    logger.info("AddPhoto success", { count: files.length, user: req.user.login });
     res.status(200).json({ success: true, count: files.length, message: `Dodano ${files.length} plików.` });
 
   } catch (err) {
-    console.error("SQL INSERT ERROR:", err.sqlMessage ?? err.message);
+    logger.error("AddPhoto Error", err);
     res.status(500).json({ error: `Upload failed: ${err.sqlMessage ?? err.message}` });
   }
 });
 
-// POST: Add a folder todo
-app.post('/api/addFolder', verifyToken, async (req, res) => {
+// POST: Add a folder
+app.post('/api/addFolder', verifyToken, csrfProtection, async (req, res) => {
   try {
-    
     const folder = req.body.folder || req.query.folder;
-    const id = parseInt(req.body.id || req.query.id, 10);
+    const id = parseStrictInteger(req.body.id || req.query.id, 'id');
+    
+    logger.info("AddFolder request", { user: req.user.login, folder, id });
 
-    // [SEC] Authorization Check
     const [uRows] = await db.promise().query('SELECT db_main FROM users WHERE login = ?', [req.user.login]);
     const userDbId = uRows[0].db_main;
     
@@ -407,29 +597,31 @@ app.post('/api/addFolder', verifyToken, async (req, res) => {
       return res.status(403).json({ error: "Unauthorized" });
     }
 
-    // [SEC] These queries are safe (Parameterized)
-    const queryCheck = `SELECT * FROM db_folders WHERE name = ? AND userId = ?`
+    const queryCheck = `SELECT * FROM db_folders WHERE name = ? AND userId = ?`;
     const query = `INSERT INTO db_folders (\`name\`, \`userId\`) VALUES (?, ?)`;
 
     const [resultsCheck] = await db.promise().query(queryCheck, [folder, id]);
     if (resultsCheck.length != 0) {
+      logger.warn("AddFolder: Folder exists", { folder });
       res.status(500).json({ error: "Folder o tej nazwie już istnieje!" });
       return;
     }
     const [results] = await db.promise().query(query, [folder, id]);
+    logger.info("AddFolder success", { folder });
     res.status(200).json({ success: true });
 
   } catch (err) {
-    console.error("SQL INSERT ERROR:", err.sqlMessage ?? err.message);
+    logger.error("AddFolder Error", err);
     res.status(500).json({ error: `Upload failed: ${err.sqlMessage ?? err.message}` });
   }
-})
+});
+
 // GET: Get usage info
 app.get('/api/getUsage', verifyToken, async (req, res) => {
   try {
+    // logger.info("GetUsage request", { user: req.user.login }); // Optional
     const userLogin = req.user.login;
 
-    // Get DB id for user
     const [userRows] = await db.promise().query(
       'SELECT db_main FROM users WHERE login = ?',
       [userLogin]
@@ -437,26 +629,21 @@ app.get('/api/getUsage', verifyToken, async (req, res) => {
     if (!userRows.length) return res.status(404).json({ error: 'User not found' });
     const userDbId = userRows[0].db_main;
 
-    // Get user db name
     const [[userDb]] = await db.promise().query(
       'SELECT name FROM db_photos WHERE id = ?',
       [userDbId]
     );
 
-    // [SEC] Validate table name from DB
     if (!isValidTableName(userDb.name)) throw new Error("Invalid DB structure");
 
-    // Calculate user usage
     const [[userUsageRows]] = await db.promise().query(
       `SELECT SUM(size) AS totalSize FROM \`${userDb.name}\``
     );
     const userUsage = Number(userUsageRows.totalSize) || 0;
 
-    // Calculate total usage
     const [allTableRows] = await db.promise().query('SELECT name FROM db_photos');
     const results = await Promise.all(
       allTableRows.map(row => {
-        // [SEC] Validation loop
         if (!isValidTableName(row.name)) return Promise.resolve([[{ totalSize: 0 }]]);
         return db.promise().query(`SELECT SUM(size) AS totalSize FROM \`${row.name}\``)
       })
@@ -475,7 +662,7 @@ app.get('/api/getUsage', verifyToken, async (req, res) => {
     });
 
   } catch (err) {
-    console.error(err);
+    logger.error("GetUsage Error", err);
     res.status(500).json({ error: `Server error ${err}` });
   }
 });
@@ -485,7 +672,6 @@ app.get('/api/getDBs', verifyToken, async (req, res) => {
   try {
     const userLogin = req.user.login;
 
-    // Get DB id for user
     const [userRows] = await db.promise().query(
       'SELECT db_main FROM users WHERE login = ?',
       [userLogin]
@@ -493,7 +679,6 @@ app.get('/api/getDBs', verifyToken, async (req, res) => {
     if (!userRows.length) return res.status(404).json({ error: 'User not found' });
     const userDbId = userRows[0].db_main;
 
-    // Get user db name
     const [[userDb]] = await db.promise().query(
       'SELECT id, name FROM db_photos WHERE id = ?',
       [userDbId]
@@ -507,7 +692,7 @@ app.get('/api/getDBs', verifyToken, async (req, res) => {
     });
 
   } catch (err) {
-    console.error(err);
+    logger.error("GetDBs Error", err);
     res.status(500).json({ error: `Server error ${err}` });
   }
 });
@@ -531,24 +716,20 @@ app.get('/api/getPhotoCount', verifyToken, async (req, res) => {
 
     if (!isValidTableName(userDb.name)) throw new Error("Invalid Table");
 
-    // Count user photos
     const [[userPhotos]] = await db.promise().query(
       `SELECT COUNT(*) AS count FROM \`${userDb.name}\``
     );
 
-    // Count general photos
     const [[generalPhotos]] = await db.promise().query(
       'SELECT COUNT(*) AS count FROM photos_general'
     );
 
-    // Get all DB entries
     const [allTables] = await db.promise().query('SELECT name FROM db_photos');
 
-    // Total size counting
     let totalUsage = 0;
     for (const row of allTables) {
       const table = row.name;
-      if (!isValidTableName(table)) continue; // [SEC] Skip invalid tables
+      if (!isValidTableName(table)) continue;
 
       const [[result]] = await db.promise().query(`SELECT COUNT(*) as count FROM \`${table}\``);
 
@@ -563,28 +744,26 @@ app.get('/api/getPhotoCount', verifyToken, async (req, res) => {
     });
 
   } catch (err) {
-    console.error(err);
+    logger.error("GetPhotoCount Error", err);
     res.status(500).json({ error: `Server error ${err}` });
   }
 });
 
-
-app.post('/api/getDbTables', verifyToken, async (req, res) => { //rework
+app.post('/api/getDbTables', verifyToken, csrfProtection, async (req, res) => {
   try {
     const dbName = req.body.dbName;
+    logger.info("GetDbTables", { user: req.user.login, dbName });
 
-    // [SEC] SQL Injection Fix: CRITICAL
-    // User controls dbName, which is put directly into the query.
     if (!isValidTableName(dbName)) {
       return res.status(400).json({ error: "Invalid database name" });
     }
     
-    // [SEC] Authorization Check
     const [uRows] = await db.promise().query('SELECT db_main FROM users WHERE login = ?', [req.user.login]);
     const userDbId = uRows[0].db_main;
     const [dRows] = await db.promise().query('SELECT name FROM db_photos WHERE id = ?', [userDbId]);
     
     if (dbName !== dRows[0].name && dbName !== 'photos_general') {
+      logger.warn("GetDbTables: Unauthorized", { user: req.user.login });
       return res.status(403).json({ error: "Unauthorized" });
     }
 
@@ -597,16 +776,16 @@ app.post('/api/getDbTables', verifyToken, async (req, res) => { //rework
     });
 
   } catch (err) {
-    console.error(err);
+    logger.error("GetDbTables Error", err);
     res.status(500).json({ error: `Server error ${err}` });
   }
 });
 
-app.post('/api/getFolders', verifyToken, async (req, res) => {
+app.post('/api/getFolders', verifyToken, csrfProtection, async (req, res) => {
   try {
-    const access = parseInt(req.body.access, 10);
+    const access = parseStrictInteger(req.body.access, 'access');
+    logger.info("GetFolders", { user: req.user.login, access });
 
-    // [SEC] Authorization Check
     const [uRows] = await db.promise().query('SELECT db_main FROM users WHERE login = ?', [req.user.login]);
     const userDbId = uRows[0].db_main;
     
@@ -615,47 +794,46 @@ app.post('/api/getFolders', verifyToken, async (req, res) => {
     }
 
     const query = `SELECT id, name FROM db_folders WHERE userId = ?`;
-    const [result] = await db.promise().query(query, [access]); // [SEC] Fixed missing array brackets around params
+    const [result] = await db.promise().query(query, [access]);
     res.status(200).json({
       result: result
     });
 
   } catch (err) {
-    console.error(err);
+    logger.error("GetFolders Error", err);
     res.status(500).json({ error: `Server error ${err}` });
   }
 });
 
-app.post('/api/deletePhoto', verifyToken, async (req, res) => {
+app.post('/api/deletePhoto', verifyToken, csrfProtection, async (req, res) => {
   const { fileName, dbName } = req.body;
+  logger.info("DeletePhoto initiated", { user: req.user.login, fileName, dbName });
 
   if (!fileName || !dbName) {
     return res.status(400).json({ error: "Missing fileName or dbName" });
   }
 
-  // [SEC] Validate DB name to prevent SQL Injection
   if (!isValidTableName(dbName)) {
     return res.status(400).json({ error: "Invalid database name" });
   }
 
-  // [SEC] Authorization Check
   const [uRows] = await db.promise().query('SELECT db_main FROM users WHERE login = ?', [req.user.login]);
   const userDbId = uRows[0].db_main;
   const [dRows] = await db.promise().query('SELECT name FROM db_photos WHERE id = ?', [userDbId]);
   
   if (dbName !== dRows[0].name && dbName !== 'photos_general') {
+    logger.warn("DeletePhoto: Unauthorized DB", { user: req.user.login });
     return res.status(403).json({ error: "Unauthorized" });
   }
 
   try {
-    // 1. Find the file metadata to construct the physical path
-    // We need user_id and folder to know where the file sits on the disk: BASE_DIR/userId/folder/filename
     const [rows] = await db.promise().query(
       `SELECT user_id, folder FROM \`${dbName}\` WHERE name = ?`,
       [fileName]
     );
 
     if (rows.length === 0) {
+      logger.warn("DeletePhoto: Not found in DB", { fileName });
       return res.status(404).json({ error: "Photo not found in database" });
     }
 
@@ -672,37 +850,37 @@ app.post('/api/deletePhoto', verifyToken, async (req, res) => {
     const filePath = path.join(fileDir, safeFileName);
 
     if (!fileDir.startsWith(userRoot)) {
+      logger.error("DeletePhoto: Path traversal in DB record", { filePath });
       return res.status(400).json({ error: "Invalid folder path in DB" });
     }
 
-    // 2. Delete file from disk
     try {
-      // Check if file exists before trying to delete
       if (await fs.pathExists(filePath)) {
         await fs.remove(filePath);
+        logger.info("DeletePhoto: File removed from disk", { filePath });
       } else {
-        console.warn(`File not found on disk, removing from DB anyway: ${filePath}`);
+        logger.warn("DeletePhoto: File not found on disk", { filePath });
       }
     } catch (fsError) {
-      console.error("File system error:", fsError);
+      logger.error("DeletePhoto: File System Error", fsError);
       return res.status(500).json({ error: "Failed to delete file from disk" });
     }
 
-    // 3. Delete record from database
     await db.promise().query(
       `DELETE FROM \`${dbName}\` WHERE name = ?`,
       [fileName]
     );
-
+    
+    logger.info("DeletePhoto: Success", { fileName });
     res.status(200).json({ success: true, message: "Photo deleted" });
 
   } catch (err) {
-    console.error("DELETE ERROR:", err);
+    logger.error("DeletePhoto Error", err);
     res.status(500).json({ error: ` ${err.message}` });
   }
 });
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`HTTP Server running on port ${PORT}`);
+  logger.info(`HTTP Server running on port ${PORT}`);
 });

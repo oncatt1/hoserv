@@ -12,7 +12,8 @@ export default function Profile(){
         const res = await fetch(`${import.meta.env.VITE_API_URL}/logout`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': localStorage.getItem('csrfToken')
             },
             credentials: 'include',
         });

@@ -16,12 +16,15 @@ export const useLogin = () => {
             const res = await fetch(`${import.meta.env.VITE_API_URL}/login`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': localStorage.getItem('csrfToken')
                 },
                 credentials: 'include',
                 body: JSON.stringify(credentials)
             });
             if (res.ok){
+                const { csrfToken } = await res.json();
+                localStorage.setItem('csrfToken', csrfToken);
                 navigate("/photos");
                 fetchUser();
                 return { success: true }

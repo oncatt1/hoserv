@@ -12,7 +12,8 @@ export const useAddFolder = () => {
             const res = await fetch(`${import.meta.env.VITE_API_URL}/addFolder`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': localStorage.getItem('csrfToken')
                 },
                 credentials: 'include',
                 body: JSON.stringify(data)

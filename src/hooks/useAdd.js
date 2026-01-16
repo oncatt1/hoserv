@@ -15,7 +15,7 @@ export const useAdd = () => {
             console.log(data);
             const res = await fetch(`${import.meta.env.VITE_API_URL}/addPhoto?folder=${folder}&user=${access}`, {
                 method: 'POST',
-                headers: {},
+                headers: {'X-CSRF-Token': localStorage.getItem('csrfToken')},
                 credentials: 'include',
                 body: data
             });

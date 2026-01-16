@@ -41,7 +41,8 @@ export default function PhotoDetails({ selectedPhoto, closeLightBox, onNextPhoto
             const response = await fetch(`${import.meta.env.VITE_API_URL}/deletePhoto`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',      
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': localStorage.getItem('csrfToken')
                 },
                 credentials: 'include',
                 body: JSON.stringify({
