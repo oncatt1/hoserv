@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Dec 09, 2025 at 07:59 PM
+-- Generation Time: Jan 16, 2026 at 07:20 PM
 -- Server version: 8.4.7-0ubuntu0.25.10.3
 -- PHP Version: 8.4.11
 
@@ -24,12 +24,34 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `db_folders`
+--
+
+CREATE TABLE `db_folders` (
+  `id` int NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `userId` int NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `db_folders`
+--
+
+INSERT INTO `db_folders` (`id`, `name`, `userId`) VALUES
+(1, 'ddd', 5),
+(2, 'ddd', 1),
+(3, 'dupa', 5),
+(4, 'ddd', 3);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `db_photos`
 --
 
 CREATE TABLE `db_photos` (
   `id` int NOT NULL,
-  `name` varchar(255) NOT NULL
+  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -51,11 +73,12 @@ INSERT INTO `db_photos` (`id`, `name`) VALUES
 
 CREATE TABLE `photos_cezary` (
   `id` int NOT NULL,
-  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `date` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `user_id` int DEFAULT NULL,
-  `folder` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `size` int NOT NULL
+  `folder` int NOT NULL,
+  `size` int NOT NULL,
+  `type` varchar(255) COLLATE utf8mb4_general_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -66,12 +89,20 @@ CREATE TABLE `photos_cezary` (
 
 CREATE TABLE `photos_dorota` (
   `id` int NOT NULL,
-  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `date` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `user_id` int DEFAULT NULL,
-  `folder` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `size` int NOT NULL
+  `folder` int NOT NULL,
+  `size` int NOT NULL,
+  `type` varchar(255) COLLATE utf8mb4_general_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `photos_dorota`
+--
+
+INSERT INTO `photos_dorota` (`id`, `name`, `date`, `user_id`, `folder`, `size`, `type`) VALUES
+(1, '1767282076380-1764757305189-2018-01-02_18.31.51.png', '2025-12-04 18:15:12', 3, 4, 741936, 'image/png');
 
 -- --------------------------------------------------------
 
@@ -81,29 +112,23 @@ CREATE TABLE `photos_dorota` (
 
 CREATE TABLE `photos_general` (
   `id` int NOT NULL,
-  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `date` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `user_id` int DEFAULT NULL,
-  `folder` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `size` int NOT NULL
+  `folder` int NOT NULL,
+  `size` int NOT NULL,
+  `type` varchar(255) COLLATE utf8mb4_general_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `photos_general`
 --
 
-INSERT INTO `photos_general` (`id`, `name`, `date`, `user_id`, `folder`, `size`) VALUES
-(1, '1763068279448-Screenshot_20251113_213436.png', '2025-11-13 19:34:38', 1, 'ddd', 84229),
-(2, '1763068291050-Trollface.png', '2025-11-06 17:41:41', 2, 'ddddd', 15180000),
-(3, '1764008065091-Tapestry_of_blazing_starbirth.jpg', '2025-08-22 17:04:38', 3, 'wojtek', 3624977),
-(4, '', '2025-11-30 18:55:21', 3, 'dupa', 0),
-(5, '1764532560967-2017-12-29_17.51.25.png', '2017-12-29 15:51:26', 3, 'dupa', 143686),
-(6, '1764613327601-2018-01-19_16.52.06.png', '2018-01-19 14:52:08', 2, 'dupa', 259737),
-(7, '1764613344022-2018-01-19_16.52.06.png', '2018-01-19 14:52:08', 2, 'dupa', 259737),
-(8, '1764614362797-2018-01-19_16.52.06.png', '2018-01-19 14:52:08', 2, 'dupa', 259737),
-(9, '1764757305189-2018-01-02_18.31.51.png', '2018-01-02 16:31:52', 1, 'dupa', 741936),
-(10, '1764872661940-Tapestry_of_blazing_starbirth.jpg', '2025-08-22 17:04:38', 5, 'dddd', 3624977),
-(11, '1765310278746-20230607175228_1.jpg', '2023-06-07 13:52:30', 1, 'ddddd', 278584);
+INSERT INTO `photos_general` (`id`, `name`, `date`, `user_id`, `folder`, `size`, `type`) VALUES
+(5, '1767280687801-twitter_1993077168851865821.gif', '2025-12-03 12:57:29', 1, 2, 658000, 'image/gif'),
+(6, '1767280896232-baSQMCxPkTz9sk6N.mp4', '2025-12-05 17:19:24', 1, 2, 4626744, 'video/mp4'),
+(7, '1767281443097-1764757305189-2018-01-02_18.31.51.png', '2025-12-04 18:15:12', 1, 2, 741936, 'image/png'),
+(8, '1768163708557-1766865680239-BuffPolishTF2Mercs-SHADXWBXRN-SHOTGUNEdit.mp4', '2025-12-28 10:57:52', 1, 2, 2918561, 'video/mp4');
 
 -- --------------------------------------------------------
 
@@ -113,11 +138,12 @@ INSERT INTO `photos_general` (`id`, `name`, `date`, `user_id`, `folder`, `size`)
 
 CREATE TABLE `photos_patrycja` (
   `id` int NOT NULL,
-  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `date` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `user_id` int DEFAULT NULL,
-  `folder` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `size` int NOT NULL
+  `folder` int NOT NULL,
+  `size` int NOT NULL,
+  `type` varchar(255) COLLATE utf8mb4_general_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -128,21 +154,20 @@ CREATE TABLE `photos_patrycja` (
 
 CREATE TABLE `photos_wojtek` (
   `id` int NOT NULL,
-  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `date` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `user_id` int DEFAULT NULL,
-  `folder` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `size` int NOT NULL
+  `folder` int NOT NULL,
+  `size` int NOT NULL,
+  `type` varchar(255) COLLATE utf8mb4_general_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `photos_wojtek`
 --
 
-INSERT INTO `photos_wojtek` (`id`, `name`, `date`, `user_id`, `folder`, `size`) VALUES
-(1, '1764965260284-20230407162059_1.jpg', '2023-04-07 12:21:00', 5, 'ddd', 340482),
-(2, '', '2025-12-05 19:21:38', 5, '5', 0),
-(3, '1764966183484-20230212141314_1.jpg', '2023-02-12 12:13:16', 5, 'dddddd', 324386);
+INSERT INTO `photos_wojtek` (`id`, `name`, `date`, `user_id`, `folder`, `size`, `type`) VALUES
+(1, '1767280660383-1764757305189-2018-01-02_18.31.51.png', '2025-12-04 18:15:12', 5, 1, 741936, 'image/png');
 
 -- --------------------------------------------------------
 
@@ -163,7 +188,7 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`id`, `login`, `password`, `db_main`) VALUES
 (1, 'admin', 'admin', 1),
-(2, 'wojtek', 'wojtek', 5),
+(2, 'wojtek', '$2b$10$PK3g4CajJeZ9zLR7Gh82Hu.4JI2/ol8s4/ny52KQBADRqwsQuxNW6', 5),
 (3, 'cezary', 'cezary', 2),
 (4, 'dorota', 'dorota', 3),
 (5, 'patrycja', 'patrycja', 4);
@@ -171,6 +196,12 @@ INSERT INTO `users` (`id`, `login`, `password`, `db_main`) VALUES
 --
 -- Indexes for dumped tables
 --
+
+--
+-- Indexes for table `db_folders`
+--
+ALTER TABLE `db_folders`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `db_photos`
@@ -219,6 +250,12 @@ ALTER TABLE `users`
 --
 
 --
+-- AUTO_INCREMENT for table `db_folders`
+--
+ALTER TABLE `db_folders`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
 -- AUTO_INCREMENT for table `db_photos`
 --
 ALTER TABLE `db_photos`
@@ -234,13 +271,13 @@ ALTER TABLE `photos_cezary`
 -- AUTO_INCREMENT for table `photos_dorota`
 --
 ALTER TABLE `photos_dorota`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `photos_general`
 --
 ALTER TABLE `photos_general`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `photos_patrycja`
@@ -252,7 +289,7 @@ ALTER TABLE `photos_patrycja`
 -- AUTO_INCREMENT for table `photos_wojtek`
 --
 ALTER TABLE `photos_wojtek`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `users`
